@@ -58,30 +58,17 @@ Copy the sample configuration file to `.env`:
 cp .env_sample .env
 ```
 
-Then open `.env` and set the required values:
+Then open `.env` and set the required credentials:
 
 ```dotenv
 ICLOUD_EMAIL=you@example.com
 ICLOUD_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-CALENDAR_NAME=Family
-```
-
-`CALENDAR_NAME` must match the name of an existing iCloud calendar. Calendar names are matched case-insensitively.
-
-The following settings are optional:
-
-```dotenv
-REMINDERS_CALENDAR=Reminders
-DINNER_CALENDAR=Dinner
 PORT=3000
 ```
 
-- `REMINDERS_CALENDAR` enables a separate calendar for reminders.
-- `DINNER_CALENDAR` enables a separate calendar for dinner planning.
-- Leave either value blank or unset to disable that calendar type.
-- `PORT` changes the local server port; it defaults to `3000`.
+The server creates `data/calendars.json` on first launch. It contains calendar IDs, iCloud calendar names, and types (`event`, `reminder`, or `dinner`). The first launch imports legacy `CALENDAR_NAME`, `REMINDERS_CALENDAR`, and `DINNER_CALENDAR` values from `.env` if present; after that, the JSON file is the source of calendar configuration. The generated `data/` directory is ignored by Git so each installation keeps its own settings.
 
-Never commit `.env` or share your app-specific password. The `.env` file is intended for local or server-side use only.
+The Calendars tab lets you add calendars by name, choose from eight preset colors and icons, and confirm the calendar already exists in iCloud. Covey also checks the name with iCloud before saving. Calendar records are persisted in `data/calendars.json`; direct file edits require a server restart. The config API's `PUT /api/config/calendars` replaces the full list, so include every calendar you want to keep. Calendar names must match existing iCloud calendars (case-insensitive). To store the file somewhere else, set `COVEY_DATA_DIR` to a writable directory. Never commit `.env` or share your app-specific password.
 
 ## Running locally
 
@@ -101,6 +88,7 @@ The server reads `.env` at startup. If you change your configuration, stop and r
 Covey is a small Node.js application:
 
 - `server.js` runs the Express web server and exposes the calendar API.
+- `calendar-store.js` validates and persists per-install calendar configuration in `data/calendars.json`.
 - `tsdav` handles CalDAV communication with iCloud.
 - `ical.js` parses and generates iCalendar data.
 - `index.html` contains the web application UI.
