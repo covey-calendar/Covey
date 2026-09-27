@@ -193,7 +193,8 @@
                 ovr = null,
                 initView = null,
                 initFilt = null,
-                timeFormat = "device";
+                timeFormat = "device",
+                compactWeek = false;
             const hide = { event: false, reminder: false, dinner: false };
             try {
                 const st = JSON.parse(
@@ -211,6 +212,7 @@
                     initView = st.view;
                 if (["device", "12", "24"].includes(st.timeFormat))
                     timeFormat = st.timeFormat;
+                compactWeek = !!st.compactWeek;
                 if (Number.isInteger(st.filt)) initFilt = st.filt;
             } catch (e) {}
             try {
@@ -270,6 +272,7 @@
                             view,
                             filt,
                             timeFormat,
+                            compactWeek,
                         }),
                     );
                 } catch (e) {}
@@ -646,16 +649,13 @@
             }
             function renderWeek(keys, td, on) {
                 const tg = $("tg"),
-                    st = tg.scrollTop;
+                    st = tg.scrollTop,
+                    hourStart = compactWeek ? 8 : 0,
+                    hourEnd = compactWeek ? 20 : 24,
+                    rangeStart = hourStart * 60,
+                    rangeEnd = hourEnd * 60;
                 suppressScrollEvents = true;
                 tg.innerHTML = "";
-                if (tg.clientHeight > 0) {
-                    const nh = Math.max(56, Math.round(tg.clientHeight / 9.5));
-                    if (nh !== H) {
-                        H = nh;
-                        needScroll = true;
-                    }
-                }
                 const cols =
                     "grid-template-columns:" +
                     GUT +
@@ -690,6 +690,28 @@
                             d.getDate(),
                         ),
                     );
+                    const outsideCount = compactWeek
+                        ? ev.filter((e) => {
+                              if (!on(e, k) || !e.tm) return false;
+                              const start = mins(e.tm);
+                              let end = e.te ? mins(e.te) : start + 60;
+                              if (end <= start) end += 1440;
+                              return start < rangeStart || end > rangeEnd;
+                          }).length
+                        : 0;
+                    if (outsideCount) {
+                        c.append(
+                            el(
+                                "span",
+                                "text-[9px] leading-tight text-mute",
+                                outsideCount + " outside",
+                            ),
+                        );
+                        c.setAttribute(
+                            "aria-label",
+                            `${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}, ${outsideCount} events outside 8 AM to 8 PM`,
+                        );
+                    }
                     c.onclick = () => openSheet(k);
                     hr.append(c);
                 });
@@ -727,11 +749,21 @@
                     head.append(ar);
                 }
                 tg.append(head);
+                if (tg.clientHeight > 0) {
+                    const available = tg.clientHeight - head.offsetHeight;
+                    const nh = compactWeek
+                        ? Math.max(24, Math.floor(available / (hourEnd - hourStart)))
+                        : Math.max(56, Math.round(tg.clientHeight / 9.5));
+                    if (nh !== H) {
+                        H = nh;
+                        needScroll = true;
+                    }
+                }
                 const body = el("div", "grid relative");
                 body.style.cssText =
-                    cols + ";height:" + 24 * H + "px;z-index:0";
+                    cols + ";height:" + (hourEnd - hourStart) * H + "px;z-index:0";
                 const gut = el("div", "relative");
-                for (let h = 1; h < 24; h++) {
+                for (let h = hourStart; h < hourEnd; h++) {
                     const l = el(
                         "div",
                         "absolute right-1.5 text-[11px] lg:text-xs text-mute",
@@ -739,7 +771,8 @@
                             hour: "numeric",
                         }),
                     );
-                    l.style.top = h * H - 8 + "px";
+                    l.style.top =
+                        Math.max(2, (h - hourStart) * H - 8) + "px";
                     gut.append(l);
                 }
                 body.append(gut);
@@ -756,7 +789,11 @@
                     layoutDay(ev.filter((e) => on(e, k))).forEach((i) => {
                         const e = i.e,
                             m = sty(e),
-                            h = ((i.f - i.s) / 60) * H - 3;
+                            displayStart = Math.max(i.s, rangeStart),
+                            displayEnd = Math.min(i.f, rangeEnd);
+                        if (displayEnd <= displayStart) return;
+                        const duration = displayEnd - displayStart,
+                            h = (duration / 60) * H - 3;
                         const p = el(
                             "div",
                             "absolute rounded-lg px-2 py-1 overflow-hidden",
@@ -770,7 +807,7 @@
                                         84,
                                         56 +
                                             28 *
-                                                ((i.f - i.s) /
+                                                (duration /
                                                     i.primaryDuration),
                                     )
                                   : 100,
@@ -784,7 +821,7 @@
                                 : m.c;
                         p.style.cssText =
                             "top:" +
-                            ((i.s / 60) * H + 1) +
+                            (((displayStart - rangeStart) / 60) * H + 1) +
                             "px;height:" +
                             h +
                             "px;left:calc(" +
@@ -828,14 +865,17 @@
                             );
                         c.append(p);
                     });
-                    if (k === td) {
+                    if (
+                        k === td &&
+                        (!compactWeek || (nm >= rangeStart && nm <= rangeEnd))
+                    ) {
                         const n = el(
                             "div",
                             "absolute left-0 right-0 pointer-events-none z-[5]",
                         );
                         n.style.cssText =
                             "top:" +
-                            (nm / 60) * H +
+                            ((nm - rangeStart) / 60) * H +
                             "px;border-top:2px solid var(--accent)";
                         c.append(n);
                     }
@@ -844,8 +884,9 @@
                 });
                 tg.append(body);
                 if (needScroll && tg.clientHeight > 0) {
-                    tg.scrollTop =
-                        (keys.includes(td) ? Math.max(0, nm / 60 - 1) : 7) * H;
+                    tg.scrollTop = compactWeek
+                        ? 0
+                        : (keys.includes(td) ? Math.max(0, nm / 60 - 1) : 7) * H;
                     needScroll = false;
                 } else tg.scrollTop = st;
                 requestAnimationFrame(() => {
@@ -966,6 +1007,7 @@
                     renderCals();
                     renderTheme();
                     renderTimeFormat();
+                    renderWeekHours();
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
                 $("sheet").classList.toggle("flex", sheet);
@@ -1374,6 +1416,32 @@
                         saveSet();
                         render();
                         tick();
+                    };
+                    choices.append(button);
+                });
+            }
+            function renderWeekHours() {
+                const choices = $("weekhours");
+                choices.innerHTML = "";
+                [
+                    [false, "Full day"],
+                    [true, "8 AM–8 PM"],
+                ].forEach(([compact, label]) => {
+                    const button = el(
+                        "button",
+                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                            (compactWeek === compact
+                                ? "bg-accent text-on"
+                                : ""),
+                        label,
+                    );
+                    button.type = "button";
+                    button.setAttribute("aria-pressed", compactWeek === compact);
+                    button.onclick = () => {
+                        compactWeek = compact;
+                        needScroll = true;
+                        saveSet();
+                        render();
                     };
                     choices.append(button);
                 });
