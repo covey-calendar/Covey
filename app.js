@@ -27,6 +27,22 @@
                     '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>',
                 utensils:
                     '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+                briefcase:
+                    '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/>',
+                house:
+                    '<path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/>',
+                heart:
+                    '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/>',
+                "book-open":
+                    '<path d="M12 7v14"/><path d="M3 18V5a2 2 0 0 1 2-2h3a4 4 0 0 1 4 4 4 4 0 0 1 4-4h3a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-4a3 3 0 0 0-3 2 3 3 0 0 0-3-2H5a2 2 0 0 1-2-2Z"/>',
+                music:
+                    '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+                dumbbell:
+                    '<path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>',
+                "shopping-bag":
+                    '<path d="M6 7h12l1 14H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+                users: '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+                baby: '<path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1 4.7c0 5-3.5 9-8 9s-8-4-8-9a9 9 0 0 1 1.3-4.7"/><path d="M12 2c1.5 0 3 .5 4.5 1.5"/>',
                 "trash-2":
                     '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             };
@@ -51,6 +67,28 @@
             ];
             const nAct = M.filter((m) => m.on).length;
             const INK = "#2b2622";
+            const CALENDAR_COLORS = {
+                coral: { label: "Coral", bg: "#f8c8c0", fg: "#b8503f" },
+                blue: { label: "Blue", bg: "#bfd7f5", fg: "#3b6fb0" },
+                green: { label: "Green", bg: "#c6e8cf", fg: "#3f8a5b" },
+                amber: { label: "Amber", bg: "#fbe3a6", fg: "#a7791b" },
+                violet: { label: "Violet", bg: "#dccff0", fg: "#6c4fa3" },
+                teal: { label: "Teal", bg: "#bceae3", fg: "#167c72" },
+                rose: { label: "Rose", bg: "#f5c9dc", fg: "#a7426b" },
+                slate: { label: "Slate", bg: "#dce3eb", fg: "#516174" },
+            };
+            const CALENDAR_ICON_LABELS = {
+                calendar: "Calendar",
+                briefcase: "Work",
+                house: "Home",
+                heart: "Health",
+                "book-open": "Reading",
+                music: "Music",
+                dumbbell: "Fitness",
+                "shopping-bag": "Shopping",
+                users: "People",
+                baby: "Kids",
+            };
             const K = {
                 reminder: {
                     n: "Reminders",
@@ -65,13 +103,22 @@
                     i: "utensils",
                 },
             };
-            const sty = (e) => K[e.kind] || M[mi(e.m)];
+            const calendarForEvent = (e) =>
+                calendarConfigs.find((calendar) => calendar.id === e.calendarId);
+            const sty = (e) => {
+                const calendar = calendarForEvent(e);
+                const color = calendar && CALENDAR_COLORS[calendar.color];
+                if (color) return { n: calendar.name, c: color.bg, d: color.fg };
+                return K[e.kind] || M[mi(e.m)];
+            };
             const tag = (n, e) => {
-                if (K[e.kind])
+                const calendar = calendarForEvent(e);
+                const icon = calendar?.icon || K[e.kind]?.i;
+                if (icon)
                     n.insertAdjacentHTML(
                         "afterbegin",
                         '<span class="inline-block align-[-2px] mr-1">' +
-                            ic(K[e.kind].i, 14) +
+                            ic(icon, 14) +
                             "</span>",
                     );
                 return n;
@@ -109,9 +156,18 @@
                 const [a, b, c] = k.split("-").map(Number);
                 return new Date(a, b - 1, c);
             };
+            const formatTime = (date, options) =>
+                date.toLocaleTimeString([], {
+                    ...options,
+                    ...(timeFormat === "12"
+                        ? { hour12: true }
+                        : timeFormat === "24"
+                          ? { hour12: false }
+                          : {}),
+                });
             const tfmt = (t) => {
                 const [h, m] = t.split(":").map(Number);
-                return new Date(2000, 0, 1, h, m).toLocaleTimeString([], {
+                return formatTime(new Date(2000, 0, 1, h, m), {
                     hour: "numeric",
                     minute: "2-digit",
                 });
@@ -136,7 +192,9 @@
                 manual = null,
                 ovr = null,
                 initView = null,
-                initFilt = null;
+                initFilt = null,
+                timeFormat = "device",
+                compactWeek = false;
             const hide = { event: false, reminder: false, dinner: false };
             try {
                 const st = JSON.parse(
@@ -152,6 +210,9 @@
                 if (/^\d\d:\d\d$/.test(st.darkTo)) dTo = st.darkTo;
                 if (st.view === "month" || st.view === "week")
                     initView = st.view;
+                if (["device", "12", "24"].includes(st.timeFormat))
+                    timeFormat = st.timeFormat;
+                compactWeek = !!st.compactWeek;
                 if (Number.isInteger(st.filt)) initFilt = st.filt;
             } catch (e) {}
             try {
@@ -160,6 +221,11 @@
             } catch (e) {}
             const home = () =>
                 days === 7 ? sunday(iso(new Date())) : iso(new Date());
+            let calendarConfigs = [],
+                addCalendarColor = "teal",
+                addCalendarIcon = "calendar",
+                calendarFormOpen = false,
+                calendarSaving = false;
             let syncState = "pending",
                 lastSyncAt = null;
             let ev = [],
@@ -205,6 +271,8 @@
                             darkTo: dTo,
                             view,
                             filt,
+                            timeFormat,
+                            compactWeek,
                         }),
                     );
                 } catch (e) {}
@@ -273,7 +341,30 @@
                 try {
                     j = await r.json();
                 } catch (e) {}
-                if (!r.ok) throw new Error((j && j.error) || "Request failed");
+                if (!r.ok) {
+                    if (
+                        r.status === 404 &&
+                        method === "POST" &&
+                        url === "/api/config/calendars"
+                    ) {
+                        throw new Error(
+                            "The running server is out of date. Stop and restart Covey to load the calendar API.",
+                        );
+                    }
+                    const message = (j && j.error) || `Request failed (HTTP ${r.status})`;
+                    if (
+                        r.status === 400 &&
+                        method === "POST" &&
+                        url === "/api/config/calendars" &&
+                        ["users", "baby"].includes(body?.icon) &&
+                        /available.*icons/i.test(message)
+                    ) {
+                        throw new Error(
+                            "The running server has an older calendar icon list. Stop and restart Covey, then refresh the page to use People or Kids icons.",
+                        );
+                    }
+                    throw new Error(message);
+                }
                 return j;
             }
             const mkey = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1);
@@ -385,7 +476,7 @@
             function tick() {
                 paint();
                 const n = new Date();
-                $("clock").textContent = n.toLocaleTimeString([], {
+                $("clock").textContent = formatTime(n, {
                     hour: "numeric",
                     minute: "2-digit",
                 });
@@ -558,16 +649,13 @@
             }
             function renderWeek(keys, td, on) {
                 const tg = $("tg"),
-                    st = tg.scrollTop;
+                    st = tg.scrollTop,
+                    hourStart = compactWeek ? 8 : 0,
+                    hourEnd = compactWeek ? 20 : 24,
+                    rangeStart = hourStart * 60,
+                    rangeEnd = hourEnd * 60;
                 suppressScrollEvents = true;
                 tg.innerHTML = "";
-                if (tg.clientHeight > 0) {
-                    const nh = Math.max(56, Math.round(tg.clientHeight / 9.5));
-                    if (nh !== H) {
-                        H = nh;
-                        needScroll = true;
-                    }
-                }
                 const cols =
                     "grid-template-columns:" +
                     GUT +
@@ -602,6 +690,28 @@
                             d.getDate(),
                         ),
                     );
+                    const outsideCount = compactWeek
+                        ? ev.filter((e) => {
+                              if (!on(e, k) || !e.tm) return false;
+                              const start = mins(e.tm);
+                              let end = e.te ? mins(e.te) : start + 60;
+                              if (end <= start) end += 1440;
+                              return start < rangeStart || end > rangeEnd;
+                          }).length
+                        : 0;
+                    if (outsideCount) {
+                        c.append(
+                            el(
+                                "span",
+                                "text-[9px] leading-tight text-mute",
+                                outsideCount + " outside",
+                            ),
+                        );
+                        c.setAttribute(
+                            "aria-label",
+                            `${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}, ${outsideCount} events outside 8 AM to 8 PM`,
+                        );
+                    }
                     c.onclick = () => openSheet(k);
                     hr.append(c);
                 });
@@ -639,19 +749,30 @@
                     head.append(ar);
                 }
                 tg.append(head);
+                if (tg.clientHeight > 0) {
+                    const available = tg.clientHeight - head.offsetHeight;
+                    const nh = compactWeek
+                        ? Math.max(24, Math.floor(available / (hourEnd - hourStart)))
+                        : Math.max(56, Math.round(tg.clientHeight / 9.5));
+                    if (nh !== H) {
+                        H = nh;
+                        needScroll = true;
+                    }
+                }
                 const body = el("div", "grid relative");
                 body.style.cssText =
-                    cols + ";height:" + 24 * H + "px;z-index:0";
+                    cols + ";height:" + (hourEnd - hourStart) * H + "px;z-index:0";
                 const gut = el("div", "relative");
-                for (let h = 1; h < 24; h++) {
+                for (let h = hourStart; h < hourEnd; h++) {
                     const l = el(
                         "div",
                         "absolute right-1.5 text-[11px] lg:text-xs text-mute",
-                        new Date(2000, 0, 1, h).toLocaleTimeString([], {
+                        formatTime(new Date(2000, 0, 1, h), {
                             hour: "numeric",
                         }),
                     );
-                    l.style.top = h * H - 8 + "px";
+                    l.style.top =
+                        Math.max(2, (h - hourStart) * H - 8) + "px";
                     gut.append(l);
                 }
                 body.append(gut);
@@ -668,7 +789,11 @@
                     layoutDay(ev.filter((e) => on(e, k))).forEach((i) => {
                         const e = i.e,
                             m = sty(e),
-                            h = ((i.f - i.s) / 60) * H - 3;
+                            displayStart = Math.max(i.s, rangeStart),
+                            displayEnd = Math.min(i.f, rangeEnd);
+                        if (displayEnd <= displayStart) return;
+                        const duration = displayEnd - displayStart,
+                            h = (duration / 60) * H - 3;
                         const p = el(
                             "div",
                             "absolute rounded-lg px-2 py-1 overflow-hidden",
@@ -682,7 +807,7 @@
                                         84,
                                         56 +
                                             28 *
-                                                ((i.f - i.s) /
+                                                (duration /
                                                     i.primaryDuration),
                                     )
                                   : 100,
@@ -696,7 +821,7 @@
                                 : m.c;
                         p.style.cssText =
                             "top:" +
-                            ((i.s / 60) * H + 1) +
+                            (((displayStart - rangeStart) / 60) * H + 1) +
                             "px;height:" +
                             h +
                             "px;left:calc(" +
@@ -740,14 +865,17 @@
                             );
                         c.append(p);
                     });
-                    if (k === td) {
+                    if (
+                        k === td &&
+                        (!compactWeek || (nm >= rangeStart && nm <= rangeEnd))
+                    ) {
                         const n = el(
                             "div",
                             "absolute left-0 right-0 pointer-events-none z-[5]",
                         );
                         n.style.cssText =
                             "top:" +
-                            (nm / 60) * H +
+                            ((nm - rangeStart) / 60) * H +
                             "px;border-top:2px solid var(--accent)";
                         c.append(n);
                     }
@@ -756,8 +884,9 @@
                 });
                 tg.append(body);
                 if (needScroll && tg.clientHeight > 0) {
-                    tg.scrollTop =
-                        (keys.includes(td) ? Math.max(0, nm / 60 - 1) : 7) * H;
+                    tg.scrollTop = compactWeek
+                        ? 0
+                        : (keys.includes(td) ? Math.max(0, nm / 60 - 1) : 7) * H;
                     needScroll = false;
                 } else tg.scrollTop = st;
                 requestAnimationFrame(() => {
@@ -766,11 +895,16 @@
             }
             function render() {
                 const td = iso(new Date()),
-                    vis = (e) =>
-                        K[e.kind]
+                    vis = (e) => {
+                        const custom =
+                            e.calendarId &&
+                            !["event", "reminder", "dinner"].includes(e.calendarId);
+                        if (custom) return !hide["calendar:" + e.calendarId];
+                        return K[e.kind]
                             ? !hide[e.kind]
                             : !hide.event &&
-                              (filt === null || mi(e.m) === filt),
+                                  (filt === null || mi(e.m) === filt);
+                    },
                     on = (e, k) => e.d === k && vis(e);
                 $("vm").className =
                     "h-9 px-4 rounded-full text-sm font-semibold " +
@@ -872,6 +1006,8 @@
                     renderTabs();
                     renderCals();
                     renderTheme();
+                    renderTimeFormat();
+                    renderWeekHours();
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
                 $("sheet").classList.toggle("flex", sheet);
@@ -945,6 +1081,23 @@
             }
             // Settings content is rendered on demand so each tab reflects the
             // current state without duplicating controls in the HTML.
+            function renderCalendarPage() {
+                const main = $("calendar-main-view");
+                const add = $("calendar-add-view");
+                main.classList.toggle("hidden", calendarFormOpen);
+                add.classList.toggle("hidden", !calendarFormOpen);
+                $("stabs").style.display = calendarFormOpen ? "none" : "";
+                $("settings-title").textContent = calendarFormOpen
+                    ? "Add calendar"
+                    : "Settings";
+                const back = $("calendar-add-back");
+                back.classList.toggle("hidden", !calendarFormOpen);
+                back.classList.toggle("grid", calendarFormOpen);
+                main.setAttribute("aria-hidden", calendarFormOpen);
+                add.setAttribute("aria-hidden", !calendarFormOpen);
+                main.inert = calendarFormOpen;
+                add.inert = !calendarFormOpen;
+            }
             function renderTabs() {
                 const tb = $("stabs");
                 tb.innerHTML = "";
@@ -965,12 +1118,15 @@
                     b.setAttribute("role", "tab");
                     b.setAttribute("aria-selected", k === setTab);
                     b.onclick = () => {
+                        if (k !== "calendars") calendarFormOpen = false;
                         setTab = k;
                         render();
                     };
                     tb.append(b);
-                    $("tab-" + k).style.display = k === setTab ? "" : "none";
+                    $("tab-" + k).style.display =
+                        k === setTab && !calendarFormOpen ? "" : "none";
                 });
+                renderCalendarPage();
             }
             function mkSwitch(on) {
                 const b = el(
@@ -987,46 +1143,151 @@
                 b.append(k);
                 return b;
             }
+            function renderCalendarChoices() {
+                const colors = $("calendar-colors");
+                colors.innerHTML = "";
+                Object.entries(CALENDAR_COLORS).forEach(([key, color]) => {
+                    const button = el(
+                        "button",
+                        "flex flex-col items-center gap-1 rounded-lg border p-2 text-[10px] transition-colors " +
+                            (key === addCalendarColor
+                                ? "border-accent ring-2 ring-accent"
+                                : "border-line"),
+                        color.label,
+                    );
+                    button.type = "button";
+                    button.title = color.label;
+                    button.setAttribute("aria-label", color.label + " calendar color");
+                    button.setAttribute("aria-pressed", key === addCalendarColor);
+                    const swatch = el("span", "h-6 w-6 rounded-full border border-line");
+                    swatch.style.background = color.bg;
+                    button.prepend(swatch);
+                    button.onclick = () => {
+                        addCalendarColor = key;
+                        renderCalendarChoices();
+                    };
+                    colors.append(button);
+                });
+
+                const icons = $("calendar-icons");
+                icons.innerHTML = "";
+                Object.entries(CALENDAR_ICON_LABELS).forEach(([key, label]) => {
+                    const button = el(
+                        "button",
+                        "flex flex-col items-center gap-1 rounded-lg border p-2 text-[10px] transition-colors " +
+                            (key === addCalendarIcon
+                                ? "border-accent ring-2 ring-accent"
+                                : "border-line"),
+                        label,
+                    );
+                    button.type = "button";
+                    button.title = label;
+                    button.setAttribute("aria-label", label + " calendar icon");
+                    button.setAttribute("aria-pressed", key === addCalendarIcon);
+                    const glyph = el("span", "h-6 w-6 grid place-items-center");
+                    glyph.innerHTML = ic(key, 20);
+                    button.prepend(glyph);
+                    button.onclick = () => {
+                        addCalendarIcon = key;
+                        renderCalendarChoices();
+                    };
+                    icons.append(button);
+                });
+            }
             function renderCals() {
+                renderCalendarChoices();
                 const c = $("cals");
                 c.innerHTML = "";
                 const fam = M.find((m) => m.on) || M[M.length - 1];
-                kinds
-                    .filter((k) => k === "event" || K[k])
-                    .forEach((k) => {
-                        const col = k === "event" ? fam : K[k],
-                            r = el(
-                                "button",
-                                "flex items-center gap-3 py-2 w-full text-left",
-                            );
-                        r.setAttribute("role", "switch");
-                        r.setAttribute("aria-checked", !hide[k]);
-                        const a = el(
-                            "span",
-                            "w-9 h-9 rounded-full grid place-items-center shrink-0",
+                const addRow = (calendar, custom = false) => {
+                    const { id, type, name, color, icon } = calendar;
+                    const palette = color && CALENDAR_COLORS[color];
+                    const fallback = type === "event" ? fam : K[type];
+                    const col = palette
+                        ? { c: palette.bg, d: palette.fg }
+                        : fallback;
+                    const iconName = icon || (type === "event" ? "calendar" : K[type]?.i);
+                    const hiddenKey = custom ? "calendar:" + id : type;
+                    const label = custom
+                        ? name
+                        : type === "event"
+                          ? (name || "Family") + " calendar"
+                          : name || K[type].n;
+                    const row = el(
+                        "div",
+                        "flex items-center gap-2 py-2 w-full cursor-pointer",
+                    );
+                    const identity = el(
+                        "div",
+                        "flex flex-1 min-w-0 items-center gap-3",
+                    );
+                    const glyph = el(
+                        "span",
+                        "w-9 h-9 rounded-full grid place-items-center shrink-0",
+                    );
+                    glyph.style.background = col.c;
+                    glyph.style.color = col.d;
+                    glyph.innerHTML = ic(iconName, 18);
+                    identity.append(
+                        glyph,
+                        el("span", "flex-1 text-sm font-medium", label),
+                    );
+                    const toggleCalendar = () => {
+                        hide[hiddenKey] = !hide[hiddenKey];
+                        saveSet();
+                        render();
+                    };
+                    row.onclick = toggleCalendar;
+                    if (custom) {
+                        const remove = el(
+                            "button",
+                            "w-9 h-9 grid place-items-center rounded-lg text-mute hover:text-rose-600",
                         );
-                        a.style.background = col.c;
-                        a.style.color = col.d;
-                        a.innerHTML = ic(
-                            k === "event" ? "calendar" : K[k].i,
-                            18,
+                        remove.type = "button";
+                        remove.innerHTML = ic("trash-2", 16);
+                        remove.setAttribute(
+                            "aria-label",
+                            `Remove ${name} calendar from Covey`,
                         );
-                        r.append(
-                            a,
-                            el(
-                                "span",
-                                "flex-1 text-sm font-medium",
-                                k === "event" ? "Family calendar" : K[k].n,
-                            ),
-                            mkSwitch(!hide[k]),
-                        );
-                        r.onclick = () => {
-                            hide[k] = !hide[k];
-                            saveSet();
-                            render();
+                        remove.title = "Remove from Covey";
+                        remove.onclick = (event) => {
+                            event.stopPropagation();
+                            removeCalendar(calendar);
                         };
-                        c.append(r);
+                        row.append(remove);
+                    }
+                    const toggle = el("button", "shrink-0");
+                    toggle.type = "button";
+                    toggle.setAttribute("role", "switch");
+                    toggle.setAttribute("aria-checked", !hide[hiddenKey]);
+                    toggle.setAttribute("aria-label", label);
+                    toggle.append(mkSwitch(!hide[hiddenKey]));
+                    toggle.onclick = (event) => {
+                        event.stopPropagation();
+                        toggleCalendar();
+                    };
+                    row.prepend(identity);
+                    row.append(toggle);
+                    c.append(row);
+                };
+                kinds
+                    .filter((type) => type === "event" || K[type])
+                    .forEach((type) => {
+                        const configured = calendarConfigs.find(
+                            (calendar) => calendar.id === type,
+                        );
+                        addRow({
+                            id: type,
+                            type,
+                            name: configured?.name,
+                            color: configured?.color,
+                            icon: configured?.icon,
+                        });
                     });
+                calendarConfigs
+                    .filter((calendar) => !["event", "reminder", "dinner"].includes(calendar.id))
+                    .forEach((calendar) => addRow(calendar, true));
+                $("calendar-add-section").style.display = demo ? "none" : "";
                 $("peoplewrap").style.display = nAct > 1 ? "" : "none";
                 const pp = $("people");
                 pp.innerHTML = "";
@@ -1065,6 +1326,7 @@
                         pp.append(b);
                     });
                 }
+                renderCalendarPage();
             }
             function renderTheme() {
                 const ts = $("textsizes");
@@ -1133,6 +1395,57 @@
                     $("dfrom").value = dFrom;
                 if (document.activeElement !== $("dto")) $("dto").value = dTo;
             }
+            function renderTimeFormat() {
+                const choices = $("timeformats");
+                choices.innerHTML = "";
+                [
+                    ["device", "Device"],
+                    ["12", "12-hour"],
+                    ["24", "24-hour"],
+                ].forEach(([key, label]) => {
+                    const button = el(
+                        "button",
+                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                            (timeFormat === key ? "bg-accent text-on" : ""),
+                        label,
+                    );
+                    button.type = "button";
+                    button.setAttribute("aria-pressed", timeFormat === key);
+                    button.onclick = () => {
+                        timeFormat = key;
+                        saveSet();
+                        render();
+                        tick();
+                    };
+                    choices.append(button);
+                });
+            }
+            function renderWeekHours() {
+                const choices = $("weekhours");
+                choices.innerHTML = "";
+                [
+                    [false, "Full day"],
+                    [true, "8 AM–8 PM"],
+                ].forEach(([compact, label]) => {
+                    const button = el(
+                        "button",
+                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                            (compactWeek === compact
+                                ? "bg-accent text-on"
+                                : ""),
+                        label,
+                    );
+                    button.type = "button";
+                    button.setAttribute("aria-pressed", compactWeek === compact);
+                    button.onclick = () => {
+                        compactWeek = compact;
+                        needScroll = true;
+                        saveSet();
+                        render();
+                    };
+                    choices.append(button);
+                });
+            }
             function formKind() {
                 if (!kinds.includes(addKind)) addKind = "event";
                 const ks = $("kindsel");
@@ -1160,6 +1473,23 @@
                     reminder: "Remind us to...",
                     dinner: "What's for dinner?",
                 }[addKind];
+                const calendarTarget = $("calendar-target");
+                const previousCalendarId = calendarTarget.value;
+                const eventCalendars = calendarConfigs.filter(
+                    (calendar) => calendar.type === "event",
+                );
+                calendarTarget.innerHTML = "";
+                eventCalendars.forEach((calendar) => {
+                    const option = el("option", null, calendar.name);
+                    option.value = calendar.id;
+                    calendarTarget.append(option);
+                });
+                if (eventCalendars.some((calendar) => calendar.id === previousCalendarId))
+                    calendarTarget.value = previousCalendarId;
+                $("calendar-target-wrap").classList.toggle(
+                    "hidden",
+                    addKind !== "event" || eventCalendars.length <= 1,
+                );
                 const who = addKind === "event" && nAct > 1;
                 const timed = addKind === "event";
                 $("who").style.display = who ? "" : "none";
@@ -1192,15 +1522,23 @@
                     te: addKind === "event" ? $("endtime").value : "",
                     kind: addKind,
                 };
-                if (addKind === "event") b.m = M[+$("who").value].n;
+                if (addKind === "event") {
+                    b.m = M[+$("who").value].n;
+                    if ($("calendar-target").value)
+                        b.calendarId = $("calendar-target").value;
+                }
                 try {
                     if (demo) {
                         const id = String(Date.now() + Math.random());
                         local.push({ ...b, id, url: id, etag: "" });
                         saveLocal();
                     } else await api("POST", "/api/events", b);
-                    if (hide[addKind]) {
-                        hide[addKind] = false;
+                    const hiddenKey = b.calendarId &&
+                        !["event", "reminder", "dinner"].includes(b.calendarId)
+                        ? "calendar:" + b.calendarId
+                        : addKind;
+                    if (hide[hiddenKey]) {
+                        hide[hiddenKey] = false;
                         saveSet();
                     }
                     $("title").value = "";
@@ -1214,9 +1552,116 @@
                     setAdding(false);
                 }
             }
+            function setCalendarAddStatus(message, error = false) {
+                const output = $("calendar-add-status");
+                output.textContent = message;
+                output.className =
+                    "min-h-4 text-xs " + (error ? "text-rose-600" : "text-mute");
+            }
+            function updateCalendarAddButton() {
+                const button = $("calendar-add-save");
+                button.disabled =
+                    calendarSaving ||
+                    !$("calendar-name").value.trim() ||
+                    !$("calendar-confirm").checked;
+                button.textContent = calendarSaving ? "Checking iCloud…" : "Add calendar";
+            }
+            async function saveCalendar() {
+                const name = $("calendar-name").value.trim();
+                if (calendarSaving || !name || !$("calendar-confirm").checked) return;
+                calendarSaving = true;
+                updateCalendarAddButton();
+                setCalendarAddStatus("Checking that the calendar exists in iCloud…");
+                try {
+                    const config = await api("POST", "/api/config/calendars", {
+                        name,
+                        color: addCalendarColor,
+                        icon: addCalendarIcon,
+                        confirmedExisting: true,
+                    });
+                    calendarConfigs = config.calendars;
+                    kinds = config.kinds;
+                    hide["calendar:" + config.calendar.id] = false;
+                    saveSet();
+                    calendarFormOpen = false;
+                    $("calendar-name").value = "";
+                    $("calendar-confirm").checked = false;
+                    setCalendarAddStatus("");
+                    updateCalendarAddButton();
+                    render();
+                    const listStatus = $("calendar-list-status");
+                    listStatus.textContent = `Added “${config.calendar.name}”.`;
+                    listStatus.className = "min-h-4 text-xs text-mute";
+                    $("calendar-add-toggle").focus();
+                    load();
+                } catch (error) {
+                    setCalendarAddStatus(error.message, true);
+                } finally {
+                    calendarSaving = false;
+                    updateCalendarAddButton();
+                }
+            }
+            async function removeCalendar(calendar) {
+                if (
+                    !confirm(
+                        `Remove “${calendar.name}” from Covey? Its calendar and events will remain in iCloud.`,
+                    )
+                )
+                    return;
+                const output = $("calendar-list-status");
+                output.textContent = `Removing “${calendar.name}”…`;
+                output.className = "min-h-4 text-xs text-mute";
+                try {
+                    const config = await api(
+                        "DELETE",
+                        "/api/config/calendars/" + encodeURIComponent(calendar.id),
+                    );
+                    calendarConfigs = config.calendars;
+                    kinds = config.kinds;
+                    delete hide["calendar:" + calendar.id];
+                    saveSet();
+                    output.textContent = `Removed “${calendar.name}” from Covey.`;
+                    render();
+                    load();
+                } catch (error) {
+                    output.textContent = error.message;
+                    output.className = "min-h-4 text-xs text-rose-600";
+                }
+            }
             // Wire the static controls from index.html to the state and render
             // functions above, then perform the initial data load.
             $("go").onclick = add;
+            $("calendar-add-toggle").onclick = () => {
+                calendarFormOpen = true;
+                renderCalendarChoices();
+                setCalendarAddStatus("");
+                render();
+                $("calendar-name").focus();
+            };
+            $("calendar-add-back").onclick = () => {
+                calendarFormOpen = false;
+                render();
+                $("calendar-add-toggle").focus();
+            };
+            $("calendar-add-cancel").onclick = () => {
+                calendarFormOpen = false;
+                $("calendar-name").value = "";
+                $("calendar-confirm").checked = false;
+                setCalendarAddStatus("");
+                updateCalendarAddButton();
+                render();
+                $("calendar-add-toggle").focus();
+            };
+            $("calendar-name").oninput = () => {
+                setCalendarAddStatus("");
+                updateCalendarAddButton();
+            };
+            $("calendar-confirm").onchange = () => {
+                setCalendarAddStatus("");
+                updateCalendarAddButton();
+            };
+            $("calendar-add-save").onclick = saveCalendar;
+            updateCalendarAddButton();
             $("title").onkeydown = (e) => {
                 if (e.key === "Enter") add();
             };
@@ -1225,9 +1670,19 @@
                 if (e.target === $("sheet")) closeSheet();
             };
             document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape" && (sheet || setOpen)) {
-                    if (setOpen) setOpen = false;
-                    else sheet = false;
+                if (e.key !== "Escape") return;
+                if (setOpen) {
+                    if (setTab === "calendars" && calendarFormOpen) {
+                        calendarFormOpen = false;
+                        render();
+                        $("calendar-add-toggle").focus();
+                    } else {
+                        setOpen = false;
+                        calendarFormOpen = false;
+                        render();
+                    }
+                } else if (sheet) {
+                    sheet = false;
                     render();
                 }
             });
@@ -1258,11 +1713,15 @@
             };
             $("sclose").onclick = () => {
                 setOpen = false;
+                calendarFormOpen = false;
+                renderCalendarPage();
                 render();
             };
             $("settings").onclick = (e) => {
                 if (e.target === $("settings")) {
                     setOpen = false;
+                    calendarFormOpen = false;
+                    renderCalendarPage();
                     render();
                 }
             };
@@ -1310,6 +1769,7 @@
                 api("GET", "/api/config")
                     .then((c) => {
                         kinds = c.kinds;
+                        calendarConfigs = c.calendars || [];
                         render();
                     })
                     .catch(() => {});

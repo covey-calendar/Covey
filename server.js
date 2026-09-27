@@ -5,16 +5,42 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildICS, parseEvents, isoDate } from './ics.js';
+import {
+  CALENDAR_COLORS,
+  CALENDAR_ICONS,
+  loadCalendarStore,
+  saveCalendarStore,
+} from './calendar-store.js';
 
-const { ICLOUD_EMAIL, ICLOUD_APP_PASSWORD, CALENDAR_NAME = 'Family', REMINDERS_CALENDAR, DINNER_CALENDAR, PORT = 3000 } = process.env;
+const here = path.dirname(fileURLToPath(import.meta.url));
+const {
+  ICLOUD_EMAIL,
+  ICLOUD_APP_PASSWORD,
+  CALENDAR_NAME,
+  REMINDERS_CALENDAR,
+  DINNER_CALENDAR,
+  COVEY_DATA_DIR,
+  PORT = 3000,
+} = process.env;
 if (!ICLOUD_EMAIL || !ICLOUD_APP_PASSWORD) {
   console.error('Missing ICLOUD_EMAIL or ICLOUD_APP_PASSWORD. Copy .env_sample to .env and fill it in.');
   process.exit(1);
 }
 
-// kind -> iCloud calendar name. The reminders and dinner calendars are optional.
-const ROLES = { event: CALENDAR_NAME, reminder: REMINDERS_CALENDAR, dinner: DINNER_CALENDAR };
-const KINDS = Object.keys(ROLES).filter(k => ROLES[k]);
+const dataDir = COVEY_DATA_DIR ? path.resolve(COVEY_DATA_DIR) : path.join(here, 'data');
+const calendarStorePath = path.join(dataDir, 'calendars.json');
+let calendars;
+try {
+  calendars = loadCalendarStore(calendarStorePath, {
+    CALENDAR_NAME,
+    REMINDERS_CALENDAR,
+    DINNER_CALENDAR,
+  });
+} catch (error) {
+  console.error(`Unable to load calendar configuration: ${error.message}`);
+  process.exit(1);
+}
+let KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
 
 let ctx = null; // cached iCloud connection
 async function connect() {
@@ -26,12 +52,12 @@ async function connect() {
     defaultAccountType: 'caldav',
   });
   const all = await client.fetchCalendars();
-  const cals = {};
-  for (const kind of KINDS) {
-    const name = ROLES[kind].toLowerCase();
+  const cals = Object.create(null);
+  for (const configured of calendars) {
+    const name = configured.name.toLowerCase();
     const calendar = all.find(c => String(c.displayName || '').toLowerCase() === name);
-    if (!calendar) throw new Error(`No calendar named "${ROLES[kind]}". Found: ${all.map(c => c.displayName).join(', ')}`);
-    cals[kind] = calendar;
+    if (!calendar) throw new Error(`No calendar named "${configured.name}". Found: ${all.map(c => c.displayName).join(', ')}`);
+    cals[configured.id] = { ...configured, calendar };
   }
   return (ctx = { client, cals });
 }
@@ -72,7 +98,6 @@ function startStatusLine(url) {
 const app = express();
 app.use((_req, _res, next) => { reqCount++; next(); });
 app.use(express.json());
-const here = path.dirname(fileURLToPath(import.meta.url));
 app.get('/', (_req, res) => {
   const page = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
   res.type('html').send(page.replace('<!--SERVER-->', '<script>window.GAGGLE_SERVER = true</script>'));
@@ -80,7 +105,111 @@ app.get('/', (_req, res) => {
 
 app.use(express.static(here, { index: false }));
 
-app.get('/api/config', (_req, res) => res.json({ kinds: KINDS }));
+const publicCalendars = () => calendars.map(({ id, name, type, color, icon }) => ({
+  id,
+  name,
+  type,
+  ...(color ? { color } : {}),
+  ...(icon ? { icon } : {}),
+}));
+
+app.get('/api/config', (_req, res) => res.json({
+  kinds: KINDS,
+  calendars: publicCalendars(),
+}));
+
+app.post('/api/config/calendars', async (req, res) => {
+  const { name, color, icon, confirmedExisting } = req.body || {};
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (confirmedExisting !== true) {
+    return res.status(400).json({ error: 'Confirm that this calendar already exists in iCloud.' });
+  }
+  if (!trimmedName || trimmedName.length > 100) {
+    return res.status(400).json({ error: 'Calendar name must be 1-100 characters.' });
+  }
+  if (!CALENDAR_COLORS.has(color)) {
+    return res.status(400).json({ error: 'Choose one of the available calendar colors.' });
+  }
+  if (!CALENDAR_ICONS.has(icon)) {
+    return res.status(400).json({ error: 'Choose one of the available calendar icons.' });
+  }
+  if (calendars.some((calendar) => calendar.name.toLowerCase() === trimmedName.toLowerCase())) {
+    return res.status(409).json({ error: `A calendar named "${trimmedName}" is already configured.` });
+  }
+
+  try {
+    const client = ctx?.client || await createDAVClient({
+      serverUrl: 'https://caldav.icloud.com',
+      credentials: { username: ICLOUD_EMAIL, password: ICLOUD_APP_PASSWORD },
+      authMethod: 'Basic',
+      defaultAccountType: 'caldav',
+    });
+    const available = await client.fetchCalendars();
+    const remote = available.find((calendar) =>
+      String(calendar.displayName || '').toLowerCase() === trimmedName.toLowerCase(),
+    );
+    if (!remote) {
+      return res.status(400).json({
+        error: `No iCloud calendar named "${trimmedName}" was found. Add it to iCloud first, then try again.`,
+      });
+    }
+
+    const baseId = trimmedName
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50) || 'calendar';
+    let id = baseId;
+    let suffix = 2;
+    while (calendars.some((calendar) => calendar.id === id)) {
+      id = `${baseId}-${suffix++}`;
+    }
+    const created = { id, name: remote.displayName, type: 'event', color, icon };
+    calendars = saveCalendarStore(calendarStorePath, [...calendars, created]);
+    KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
+    ctx = null;
+    res.status(201).json({ kinds: KINDS, calendars: publicCalendars(), calendar: created });
+  } catch (error) {
+    console.error('Unable to add iCloud calendar:', error);
+    res.status(502).json({ error: `Could not verify this calendar with iCloud: ${error.message}` });
+  }
+});
+
+app.delete('/api/config/calendars/:id', (req, res) => {
+  const { id } = req.params;
+  if (['event', 'reminder', 'dinner'].includes(id)) {
+    return res.status(400).json({ error: 'Built-in calendars cannot be removed here.' });
+  }
+  if (!calendars.some((calendar) => calendar.id === id)) {
+    return res.status(404).json({ error: 'Calendar not found.' });
+  }
+
+  try {
+    calendars = saveCalendarStore(
+      calendarStorePath,
+      calendars.filter((calendar) => calendar.id !== id),
+    );
+    KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
+    ctx = null;
+    res.json({ kinds: KINDS, calendars: publicCalendars() });
+  } catch (error) {
+    console.error('Unable to remove calendar:', error);
+    res.status(500).json({ error: `Could not remove calendar: ${error.message}` });
+  }
+});
+
+app.put('/api/config/calendars', (req, res) => {
+  try {
+    calendars = saveCalendarStore(calendarStorePath, req.body?.calendars);
+    KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
+    ctx = null;
+    res.json({ kinds: KINDS, calendars: publicCalendars() });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
 app.get('/api/events', wrap(async (req, res) => {
   const m = /^(\d{4})-(\d{2})$/.exec(req.query.month || '');
@@ -89,26 +218,37 @@ app.get('/api/events', wrap(async (req, res) => {
   const from = isoDate(new Date(y, mo - 1, 1)), to = isoDate(new Date(y, mo, 0));
   const timeRange = { start: new Date(y, mo - 1, -1).toISOString(), end: new Date(y, mo, 2).toISOString() }; // padded for timezone edges
   const { client, cals } = await connect();
-  const lists = await Promise.all(Object.entries(cals).map(async ([kind, calendar]) => {
+  const lists = await Promise.all(Object.values(cals).map(async ({ id, name, type, calendar }) => {
     const objs = await client.fetchCalendarObjects({ calendar, timeRange });
-    return objs.flatMap(o => parseEvents(o, from, to)).map(e => ({ ...e, kind }));
+    return objs.flatMap(o => parseEvents(o, from, to)).map(e => ({
+      ...e,
+      kind: type,
+      calendarId: id,
+      calendarName: name,
+      calendarColor: cals[id].color || null,
+      calendarIcon: cals[id].icon || null,
+    }));
   }));
   res.json(lists.flat());
 }));
 
 app.post('/api/events', wrap(async (req, res) => {
-  const { t, d, tm = '', te = '', m = 'Family', kind = 'event' } = req.body || {};
+  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId } = req.body || {};
   const validTime = value => /^(\d{2}:\d{2})?$/.test(value);
   if (typeof t !== 'string' || !t.trim() || t.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(d) ||
       !validTime(tm) || !validTime(te) || (te && (!tm || te <= tm)) ||
-      typeof m !== 'string' || m.length > 40 || typeof kind !== 'string') {
+      typeof m !== 'string' || m.length > 40 || typeof kind !== 'string' ||
+      (calendarId !== undefined && typeof calendarId !== 'string')) {
     return res.status(400).json({ error: 'Invalid event' });
   }
   const { client, cals } = await connect();
-  if (!Object.hasOwn(cals, kind)) return res.status(400).json({ error: `No ${kind} calendar is configured` });
+  const target = calendarId
+    ? cals[calendarId]
+    : Object.values(cals).find((configured) => configured.type === kind);
+  if (!target || target.type !== kind) return res.status(400).json({ error: `No ${kind} calendar is configured` });
   const uid = crypto.randomUUID();
   const r = await client.createCalendarObject({
-    calendar: cals[kind],
+    calendar: target.calendar,
     filename: `${uid}.ics`,
     iCalString: buildICS({
       uid, title: t.trim(), date: d,
@@ -125,7 +265,7 @@ app.post('/api/events', wrap(async (req, res) => {
 app.delete('/api/events', wrap(async (req, res) => {
   const { url, etag } = req.query;
   const { client, cals } = await connect();
-  if (typeof url !== 'string' || !Object.values(cals).some(c => url.startsWith(c.url))) return res.status(400).json({ error: 'Bad event url' });
+  if (typeof url !== 'string' || !Object.values(cals).some(c => url.startsWith(c.calendar.url))) return res.status(400).json({ error: 'Bad event url' });
   const r = await client.deleteCalendarObject({ calendarObject: { url, etag: etag || undefined } });
   if (!r.ok) throw new Error(`iCloud could not delete the event (HTTP ${r.status})`);
   res.json({ ok: true });
