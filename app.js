@@ -156,9 +156,18 @@
                 const [a, b, c] = k.split("-").map(Number);
                 return new Date(a, b - 1, c);
             };
+            const formatTime = (date, options) =>
+                date.toLocaleTimeString([], {
+                    ...options,
+                    ...(timeFormat === "12"
+                        ? { hour12: true }
+                        : timeFormat === "24"
+                          ? { hour12: false }
+                          : {}),
+                });
             const tfmt = (t) => {
                 const [h, m] = t.split(":").map(Number);
-                return new Date(2000, 0, 1, h, m).toLocaleTimeString([], {
+                return formatTime(new Date(2000, 0, 1, h, m), {
                     hour: "numeric",
                     minute: "2-digit",
                 });
@@ -183,7 +192,8 @@
                 manual = null,
                 ovr = null,
                 initView = null,
-                initFilt = null;
+                initFilt = null,
+                timeFormat = "device";
             const hide = { event: false, reminder: false, dinner: false };
             try {
                 const st = JSON.parse(
@@ -199,6 +209,8 @@
                 if (/^\d\d:\d\d$/.test(st.darkTo)) dTo = st.darkTo;
                 if (st.view === "month" || st.view === "week")
                     initView = st.view;
+                if (["device", "12", "24"].includes(st.timeFormat))
+                    timeFormat = st.timeFormat;
                 if (Number.isInteger(st.filt)) initFilt = st.filt;
             } catch (e) {}
             try {
@@ -257,6 +269,7 @@
                             darkTo: dTo,
                             view,
                             filt,
+                            timeFormat,
                         }),
                     );
                 } catch (e) {}
@@ -460,7 +473,7 @@
             function tick() {
                 paint();
                 const n = new Date();
-                $("clock").textContent = n.toLocaleTimeString([], {
+                $("clock").textContent = formatTime(n, {
                     hour: "numeric",
                     minute: "2-digit",
                 });
@@ -722,7 +735,7 @@
                     const l = el(
                         "div",
                         "absolute right-1.5 text-[11px] lg:text-xs text-mute",
-                        new Date(2000, 0, 1, h).toLocaleTimeString([], {
+                        formatTime(new Date(2000, 0, 1, h), {
                             hour: "numeric",
                         }),
                     );
@@ -952,6 +965,7 @@
                     renderTabs();
                     renderCals();
                     renderTheme();
+                    renderTimeFormat();
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
                 $("sheet").classList.toggle("flex", sheet);
@@ -1338,6 +1352,31 @@
                 if (document.activeElement !== $("dfrom"))
                     $("dfrom").value = dFrom;
                 if (document.activeElement !== $("dto")) $("dto").value = dTo;
+            }
+            function renderTimeFormat() {
+                const choices = $("timeformats");
+                choices.innerHTML = "";
+                [
+                    ["device", "Device"],
+                    ["12", "12-hour"],
+                    ["24", "24-hour"],
+                ].forEach(([key, label]) => {
+                    const button = el(
+                        "button",
+                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                            (timeFormat === key ? "bg-accent text-on" : ""),
+                        label,
+                    );
+                    button.type = "button";
+                    button.setAttribute("aria-pressed", timeFormat === key);
+                    button.onclick = () => {
+                        timeFormat = key;
+                        saveSet();
+                        render();
+                        tick();
+                    };
+                    choices.append(button);
+                });
             }
             function formKind() {
                 if (!kinds.includes(addKind)) addKind = "event";
