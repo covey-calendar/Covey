@@ -750,7 +750,10 @@
                 }
                 tg.append(head);
                 if (tg.clientHeight > 0) {
-                    const available = tg.clientHeight - head.offsetHeight;
+                    const bottomPadding =
+                        parseFloat(getComputedStyle(tg).paddingBottom) || 0;
+                    const available =
+                        tg.clientHeight - head.offsetHeight - bottomPadding;
                     const nh = compactWeek
                         ? Math.max(24, Math.floor(available / (hourEnd - hourStart)))
                         : Math.max(56, Math.round(tg.clientHeight / 9.5));
