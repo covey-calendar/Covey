@@ -1,10 +1,11 @@
 {
   "name": "covey-calendar",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": false,
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env server.js"
+    "setup": "node setup.js",
+    "start": "node start.js"
   },
   "engines": {
     "node": ">=20.0"
