@@ -137,12 +137,7 @@
                     0,
                     SPLASH_MIN_MS - (Date.now() - splashStart),
                 );
-                setTimeout(() => {
-                    s.classList.add("splash-out");
-                    s.addEventListener("transitionend", () => s.remove(), {
-                        once: true,
-                    });
-                }, wait);
+                setTimeout(() => s.remove(), wait);
             }
             setTimeout(hideSplash, 8000); // safety net in case the initial load never settles
             const pad = (n) => String(n).padStart(2, "0");
