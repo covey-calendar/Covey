@@ -25,6 +25,11 @@
                 bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
                 calendar:
                     '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>',
+                "calendar-days":
+                    '<path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/>',
+                "columns-3":
+                    '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+                list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
                 utensils:
                     '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
                 briefcase:
@@ -203,7 +208,11 @@
                 auto = !!st.auto;
                 if (/^\d\d:\d\d$/.test(st.darkFrom)) dFrom = st.darkFrom;
                 if (/^\d\d:\d\d$/.test(st.darkTo)) dTo = st.darkTo;
-                if (st.view === "month" || st.view === "week")
+                if (
+                    st.view === "month" ||
+                    st.view === "week" ||
+                    st.view === "list"
+                )
                     initView = st.view;
                 if (["device", "12", "24"].includes(st.timeFormat))
                     timeFormat = st.timeFormat;
@@ -412,7 +421,7 @@
             function setView(v) {
                 needScroll = true;
                 armIdleReset();
-                if (v === "week" && view === "month")
+                if (v !== "month" && view === "month")
                     wstart = days === 7 ? sunday(sel) : sel;
                 if (v === "month") {
                     const d = parse(wstart);
@@ -492,8 +501,8 @@
                 sheet = false;
                 render();
             }
-            // Month and week views share the same event model but have separate
-            // layout paths because the week view is a time-grid.
+            // Month, week, and list views share one event model; each has a
+            // separate layout path suited to its calendar presentation.
             function monthCell(k, num, list, max, td) {
                 const c = el(
                     "button",
@@ -641,6 +650,112 @@
                 });
                 flush();
                 return items;
+            }
+            function renderList(keys, td, on) {
+                const list = $("listview");
+                list.innerHTML = "";
+                keys.forEach((k) => {
+                    const date = parse(k),
+                        today = k === td,
+                        items = ev
+                            .filter((e) => on(e, k))
+                            .sort((a, b) => {
+                                if (!a.tm && b.tm) return -1;
+                                if (a.tm && !b.tm) return 1;
+                                if (a.tm !== b.tm)
+                                    return (a.tm || "").localeCompare(
+                                        b.tm || "",
+                                    );
+                                return a.t.localeCompare(b.t);
+                            }),
+                        section = el(
+                            "section",
+                            "px-3 py-3 border-b border-line last:border-b-0",
+                        ),
+                        heading = el(
+                            "button",
+                            "w-full flex items-center gap-3 text-left mb-2",
+                        ),
+                        dayNumber = el(
+                            "span",
+                            "w-10 h-10 shrink-0 grid place-items-center rounded-full text-lg font-semibold " +
+                                (today ? "bg-accent text-on" : "bg-bg"),
+                            date.getDate(),
+                        ),
+                        dateLabel = el(
+                            "span",
+                            "flex-1 text-sm font-semibold",
+                            date.toLocaleDateString(undefined, {
+                                weekday: "long",
+                                month: "long",
+                                day: "numeric",
+                            }),
+                        );
+                    section.dataset.day = k;
+                    heading.setAttribute(
+                        "aria-label",
+                        "Add event on " + dateLabel.textContent,
+                    );
+                    heading.append(dayNumber, dateLabel);
+                    heading.onclick = () => openSheet(k);
+                    section.append(heading);
+                    if (!items.length) {
+                        section.append(
+                            el(
+                                "p",
+                                "pl-[52px] text-sm text-mute",
+                                "No events",
+                            ),
+                        );
+                    } else {
+                        items.forEach((event) => {
+                            const color = sty(event),
+                                card = el(
+                                    "button",
+                                    "w-full min-w-0 flex items-start gap-3 rounded-xl border border-line px-3 py-2.5 mb-2 last:mb-0 text-left",
+                                ),
+                                time = el(
+                                    "span",
+                                    "w-[4.5rem] shrink-0 pt-0.5 text-xs font-medium text-mute",
+                                    event.tm ? trange(event) : "All day",
+                                ),
+                                title = tag(
+                                    el(
+                                        "span",
+                                        "block min-w-0 truncate text-sm font-semibold",
+                                        event.t,
+                                    ),
+                                    event,
+                                );
+                            card.style.background = color.c;
+                            card.style.color = INK;
+                            card.style.borderLeft = "4px solid " + color.d;
+                            card.setAttribute(
+                                "aria-label",
+                                (event.tm ? trange(event) : "All day") +
+                                    ": " +
+                                    event.t,
+                            );
+                            card.append(time, title);
+                            card.onclick = () => openSheet(k);
+                            section.append(card);
+                        });
+                    }
+                    list.append(section);
+                });
+                if (needScroll) {
+                    const focus = list.querySelector(
+                        '[data-day="' +
+                            (keys.includes(sel) ? sel : keys[0]) +
+                            '"]',
+                    );
+                    if (focus)
+                        list.scrollTop =
+                            focus.getBoundingClientRect().top -
+                            list.getBoundingClientRect().top +
+                            list.scrollTop;
+                    needScroll = false;
+                }
             }
             function renderWeek(keys, td, on) {
                 const tg = $("tg"),
@@ -905,16 +1020,23 @@
                     },
                     on = (e, k) => e.d === k && vis(e);
                 $("vm").className =
-                    "h-9 px-4 rounded-full text-sm font-semibold " +
+                    "h-9 w-9 grid place-items-center rounded-full " +
                     (view === "month" ? "bg-accent text-on" : "");
                 $("vw").className =
-                    "h-9 px-4 rounded-full text-sm font-semibold " +
+                    "h-9 w-9 grid place-items-center rounded-full " +
                     (view === "week" ? "bg-accent text-on" : "");
-                $("dow").classList.toggle("hidden", view === "week");
+                $("vl").className =
+                    "h-9 w-9 grid place-items-center rounded-full " +
+                    (view === "list" ? "bg-accent text-on" : "");
+                $("vm").setAttribute("aria-pressed", view === "month");
+                $("vw").setAttribute("aria-pressed", view === "week");
+                $("vl").setAttribute("aria-pressed", view === "list");
+                $("dow").classList.toggle("hidden", view !== "month");
                 const g = $("grid");
                 g.innerHTML = "";
-                g.style.display = view === "week" ? "none" : "";
+                g.style.display = view === "month" ? "" : "none";
                 $("tg").style.display = view === "week" ? "" : "none";
+                $("listview").style.display = view === "list" ? "" : "none";
                 if (view === "month") {
                     $("mon").textContent = cur.toLocaleDateString(undefined, {
                         month: "long",
@@ -976,13 +1098,11 @@
                                   year: "numeric",
                               })
                             : ", " + parse(wstart).getFullYear());
-                    renderWeek(
-                        Array.from({ length: days }, (_, i) =>
-                            addDays(wstart, i),
-                        ),
-                        td,
-                        on,
+                    const keys = Array.from({ length: days }, (_, i) =>
+                        addDays(wstart, i),
                     );
+                    if (view === "week") renderWeek(keys, td, on);
+                    else renderList(keys, td, on);
                 }
                 $("settings").classList.toggle("hidden", !setOpen);
                 $("settings").classList.toggle("flex", setOpen);
@@ -1729,6 +1849,7 @@
             $("todaybtn").onclick = goToNow;
             $("vm").onclick = () => setView("month");
             $("vw").onclick = () => setView("week");
+            $("vl").onclick = () => setView("list");
             if (!document.documentElement.requestFullscreen)
                 $("fs").classList.add("hidden");
             $("fs").onclick = () => {
@@ -1751,6 +1872,7 @@
                 if (suppressScrollEvents) return;
                 armIdleReset();
             });
+            $("listview").addEventListener("scroll", armIdleReset);
             ["pointerdown", "pointermove", "touchstart", "keydown", "wheel"].forEach(
                 (evt) =>
                     document.addEventListener(evt, wakeChrome, {

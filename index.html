@@ -130,19 +130,39 @@
                         class="ml-auto flex items-center gap-2 justify-self-end idle-fade"
                     >
                         <div
+                            role="group"
+                            aria-label="Calendar view"
                             class="flex rounded-full border border-line bg-card p-0.5"
                         >
                             <button
                                 id="vm"
-                                class="h-9 px-4 rounded-full text-sm font-medium"
+                                aria-label="Month view"
+                                title="Month view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
                             >
-                                Month
+                                <i data-i="calendar-days" data-s="18"></i>
+                                <span class="sr-only">Month</span>
                             </button>
                             <button
                                 id="vw"
-                                class="h-9 px-4 rounded-full text-sm font-medium"
+                                aria-label="Week view"
+                                title="Week view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
                             >
-                                Week
+                                <i data-i="columns-3" data-s="18"></i>
+                                <span class="sr-only">Week</span>
+                            </button>
+                            <button
+                                id="vl"
+                                aria-label="List view"
+                                title="List view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
+                            >
+                                <i data-i="list" data-s="18"></i>
+                                <span class="sr-only">List</span>
                             </button>
                         </div>
                         <button
@@ -187,6 +207,15 @@
                     ></div>
                     <div
                         id="tg"
+                        class="flex-1 min-h-0 overflow-y-auto"
+                        style="
+                            display: none;
+                            padding-bottom: 4.5rem;
+                            overscroll-behavior: contain;
+                        "
+                    ></div>
+                    <div
+                        id="listview"
                         class="flex-1 min-h-0 overflow-y-auto"
                         style="
                             display: none;
@@ -444,15 +473,17 @@
                             Compact shows 8 AM–8 PM. The day header marks events outside those hours.
                         </p>
                         <p class="text-sm font-medium mb-2">
-                            Days shown in week view
+                            Days shown in week and list views
                         </p>
                         <div
                             id="daybtns"
+                            role="group"
+                            aria-label="Days shown in week and list views"
                             class="grid grid-cols-7 gap-1.5"
                         ></div>
                         <p class="text-xs text-mute mt-2">
-                            Fewer days means bigger events. Anything under 7
-                            starts from today; 7 shows Sunday to Saturday.
+                            Anything under 7 starts from today; 7 shows Sunday
+                            to Saturday.
                         </p>
                     </div>
                     <div id="tab-appearance">
