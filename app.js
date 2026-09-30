@@ -70,7 +70,20 @@
                 { n: "Kid 2", c: "#fbe3a6", d: "#a7791b", on: false },
                 { n: "Family", c: "#dccff0", d: "#6c4fa3", on: true },
             ];
-            const nAct = M.filter((m) => m.on).length;
+            const AVATAR_EMOJI = {
+                person: "🙂",
+                child: "🧒",
+                baby: "👶",
+                bird: "🐦",
+            };
+            const PERSON_BIRD_IMAGES = [
+                { name: "Nuthatch", src: "/images/Nuthatch.png" },
+                { name: "Blue jay", src: "/images/robin.png" },
+                { name: "Cardinal", src: "/images/cardinal.png" },
+                { name: "Goldfinch", src: "/images/goldfinch.png" },
+                { name: "Robin", src: "/images/blue-jay.png" },
+            ];
+            const FAMILY_OPTION = "__family__";
             const INK = "#2b2622";
             const CALENDAR_COLORS = {
                 coral: { label: "Coral", bg: "#f8c8c0", fg: "#b8503f" },
@@ -126,6 +139,8 @@
                             ic(icon, 14) +
                             "</span>",
                     );
+                const person = personForEvent(e);
+                if (person) n.prepend(avatarNode(person, 16));
                 return n;
             };
             const mi = (n) => {
@@ -195,6 +210,7 @@
                 initFilt = null,
                 timeFormat = "device",
                 compactWeek = false;
+            let people = [];
             const hide = { event: false, reminder: false, dinner: false };
             try {
                 const st = JSON.parse(
@@ -217,7 +233,12 @@
                 if (["device", "12", "24"].includes(st.timeFormat))
                     timeFormat = st.timeFormat;
                 compactWeek = !!st.compactWeek;
-                if (Number.isInteger(st.filt)) initFilt = st.filt;
+                if (typeof st.filt === "string") initFilt = st.filt;
+                else if (
+                    Number.isInteger(st.filt) &&
+                    M[st.filt]?.on
+                )
+                    initFilt = "member:" + M[st.filt].n;
             } catch (e) {}
             try {
                 const mo = localStorage.getItem("gaggle-theme");
@@ -229,7 +250,11 @@
                 addCalendarColor = "teal",
                 addCalendarIcon = "calendar",
                 calendarFormOpen = false,
-                calendarSaving = false;
+                calendarSaving = false,
+                personFormOpen = false,
+                personSaving = false,
+                addPersonAvatar = "person",
+                addPersonImage = null;
             let syncState = "pending",
                 lastSyncAt = null;
             let ev = [],
@@ -237,13 +262,7 @@
                 kinds = ["event", "reminder", "dinner"],
                 addKind = "event",
                 view = initView || "week",
-                filt =
-                    initFilt !== null &&
-                    initFilt >= 0 &&
-                    initFilt < M.length &&
-                    M[initFilt].on
-                        ? initFilt
-                        : null,
+                filt = initFilt,
                 sel = iso(new Date()),
                 wstart = home(),
                 cur = new Date(),
@@ -333,6 +352,85 @@
                 if (x != null) e.textContent = x;
                 return e;
             }
+            const personForEvent = (event) =>
+                people.find((person) => person.id === event.personId) ||
+                people.find(
+                    (person) =>
+                        !event.personId &&
+                        person.name.toLocaleLowerCase() ===
+                            String(event.m || "").toLocaleLowerCase(),
+                );
+            const personFilterKey = (person) =>
+                person.id ? "person:" + person.id : "member:" + person.n;
+            const eventMemberName = (event) =>
+                personForEvent(event)?.name || event.m || "Family";
+            const eventFilterKey = (event) => {
+                const person = personForEvent(event);
+                return person
+                    ? "person:" + person.id
+                    : "member:" + eventMemberName(event);
+            };
+            const eventDisplayTitle = (event) => {
+                const member = eventMemberName(event);
+                return event.kind === "event" && member !== "Family"
+                    ? event.t + " · " + member
+                    : event.t;
+            };
+            function avatarNode(person, size = 24) {
+                const avatar = el(
+                    "span",
+                    "inline-grid place-items-center overflow-hidden rounded-full shrink-0 bg-accent text-on font-semibold",
+                );
+                avatar.style.width = size + "px";
+                avatar.style.height = size + "px";
+                avatar.style.fontSize = Math.max(9, Math.round(size * 0.58)) + "px";
+                avatar.setAttribute("aria-hidden", "true");
+
+                if (person.image) {
+                    const image = el("img", "w-full h-full object-cover");
+                    image.src = person.image;
+                    image.alt = "";
+                    avatar.append(image);
+                } else {
+                    avatar.textContent = AVATAR_EMOJI[person.avatar] ||
+                        String(person.name || person.n || "?").slice(0, 1).toUpperCase();
+                }
+                return avatar;
+            }
+            function renderWhoOptions(selected = FAMILY_OPTION) {
+                const select = $("who");
+                select.innerHTML = "";
+                const family = el("option", null, "Family");
+                family.value = FAMILY_OPTION;
+                select.append(family);
+                people.forEach((person) => {
+                    const option = el("option", null, person.name);
+                    option.value = person.id;
+                    select.append(option);
+                });
+                select.value =
+                    selected === FAMILY_OPTION || people.some((person) => person.id === selected)
+                        ? selected
+                        : FAMILY_OPTION;
+            }
+            function personTitleMatches(title) {
+                const normalized = title.toLocaleLowerCase().replace(/’/g, "'");
+                const isWordCharacter = (character) =>
+                    !!character && /[\p{L}\p{N}]/u.test(character);
+                return people.filter((person) => {
+                    const name = person.name.toLocaleLowerCase().replace(/’/g, "'");
+                    let start = -1;
+                    while ((start = normalized.indexOf(name, start + 1)) >= 0) {
+                        const before = normalized[start - 1] || "";
+                        let end = start + name.length;
+                        if (normalized.slice(end, end + 2) === "'s") end += 2;
+                        const after = normalized[end] || "";
+                        if (!isWordCharacter(before) && !isWordCharacter(after))
+                            return true;
+                    }
+                    return false;
+                });
+            }
             // All server-backed event operations go through this small JSON API
             // wrapper so errors are surfaced consistently in the UI.
             async function api(method, url, body) {
@@ -349,10 +447,11 @@
                     if (
                         r.status === 404 &&
                         method === "POST" &&
-                        url === "/api/config/calendars"
+                        (url === "/api/config/calendars" ||
+                            url === "/api/config/people")
                     ) {
                         throw new Error(
-                            "The running server is out of date. Stop and restart Covey to load the calendar API.",
+                            "The running server is out of date. Stop and restart Covey to load the latest settings API.",
                         );
                     }
                     const message = (j && j.error) || `Request failed (HTTP ${r.status})`;
@@ -486,12 +585,7 @@
                 });
                 updateSyncBadge();
             }
-            M.forEach((m, i) => {
-                if (!m.on) return;
-                const o = el("option", null, m.n);
-                o.value = i;
-                $("who").append(o);
-            });
+            renderWhoOptions();
             function openSheet(k) {
                 sel = k;
                 sheet = true;
@@ -521,7 +615,8 @@
                         p = el(
                             "span",
                             "block truncate rounded-md px-1.5 py-1 text-xs lg:text-sm font-medium",
-                            (e.tm ? tshort(e.tm) + " " : "") + e.t,
+                            (e.tm ? tshort(e.tm) + " " : "") +
+                                eventDisplayTitle(e),
                         );
                     p.style.background = m.c;
                     p.style.color = INK;
@@ -723,7 +818,7 @@
                                     el(
                                         "span",
                                         "block min-w-0 truncate text-sm font-semibold",
-                                        event.t,
+                                        eventDisplayTitle(event),
                                     ),
                                     event,
                                 );
@@ -734,7 +829,7 @@
                                 "aria-label",
                                 (event.tm ? trange(event) : "All day") +
                                     ": " +
-                                    event.t,
+                                    eventDisplayTitle(event),
                             );
                             card.append(time, title);
                             card.onclick = () => openSheet(k);
@@ -847,7 +942,7 @@
                                 p = el(
                                     "div",
                                     "truncate rounded-md px-2 py-1 text-xs lg:text-sm font-semibold",
-                                    e.t,
+                                    eventDisplayTitle(e),
                                 );
                             p.style.background = m.c;
                             p.style.color = INK;
@@ -960,7 +1055,7 @@
                                     el(
                                         "div",
                                         "text-sm lg:text-base font-semibold leading-tight line-clamp-2 break-words",
-                                        e.t,
+                                        eventDisplayTitle(e),
                                     ),
                                     e,
                                 ),
@@ -971,7 +1066,7 @@
                                     el(
                                         "div",
                                         "text-xs lg:text-sm font-semibold truncate",
-                                        tshort(e.tm) + " " + e.t,
+                                        tshort(e.tm) + " " + eventDisplayTitle(e),
                                     ),
                                     e,
                                 ),
@@ -1012,11 +1107,14 @@
                         const custom =
                             e.calendarId &&
                             !["event", "reminder", "dinner"].includes(e.calendarId);
-                        if (custom) return !hide["calendar:" + e.calendarId];
-                        return K[e.kind]
-                            ? !hide[e.kind]
-                            : !hide.event &&
-                                  (filt === null || mi(e.m) === filt);
+                        if (custom && hide["calendar:" + e.calendarId]) return false;
+                        if (!custom && K[e.kind] && hide[e.kind]) return false;
+                        if (!custom && !K[e.kind] && hide.event) return false;
+                        return (
+                            e.kind !== "event" ||
+                            filt === null ||
+                            eventFilterKey(e) === filt
+                        );
                     },
                     on = (e, k) => e.d === k && vis(e);
                 $("vm").className =
@@ -1153,7 +1251,7 @@
                     b.style.background = m.d;
                     const t = el("div", "flex-1 min-w-0 flex flex-col");
                     t.append(
-                        tag(el("strong", "truncate", e.t), e),
+                        tag(el("strong", "truncate", eventDisplayTitle(e)), e),
                         el(
                             "small",
                             "text-mute",
@@ -1219,12 +1317,15 @@
             function renderTabs() {
                 const tb = $("stabs");
                 tb.innerHTML = "";
-                [
+                const tabs = [
                     ["calendars", "Calendars"],
+                    ["people", "People"],
                     ["view", "View"],
                     ["appearance", "Appearance"],
                     ["about", "About"],
-                ].forEach(([k, n]) => {
+                ];
+                if (demo) tabs.splice(1, 1);
+                tabs.forEach(([k, n]) => {
                     const b = el(
                         "button",
                         "-mb-px flex-1 border-b-2 px-2 py-2.5 text-sm font-medium transition-colors " +
@@ -1311,6 +1412,216 @@
                     };
                     icons.append(button);
                 });
+            }
+            function renderPersonAvatarChoices() {
+                const choices = $("person-avatar-choices");
+                choices.innerHTML = "";
+                Object.entries({
+                    person: "Person",
+                    child: "Child",
+                    baby: "Baby",
+                    bird: "Bird",
+                }).forEach(([key, label]) => {
+                    const button = el(
+                        "button",
+                        "h-16 flex flex-col items-center justify-center gap-1 rounded-lg border " +
+                            (addPersonAvatar === key && !addPersonImage
+                                ? "border-accent ring-2 ring-accent"
+                                : "border-line"),
+                    );
+                    button.type = "button";
+                    button.title = label;
+                    button.setAttribute("aria-label", label + " avatar");
+                    button.setAttribute(
+                        "aria-pressed",
+                        addPersonAvatar === key && !addPersonImage,
+                    );
+                    button.append(
+                        avatarNode({ avatar: key, name: label }, 28),
+                        el("span", "text-[10px] text-mute", label),
+                    );
+                    button.onclick = () => {
+                        addPersonAvatar = key;
+                        addPersonImage = null;
+                        $("person-image").value = "";
+                        renderPersonAvatarChoices();
+                        renderPersonPreview();
+                    };
+                    choices.append(button);
+                });
+                const birdChoices = $("person-bird-choices");
+                birdChoices.innerHTML = "";
+                PERSON_BIRD_IMAGES.forEach(({ name, src }) => {
+                    const selected = addPersonImage === src;
+                    const button = el(
+                        "button",
+                        "flex flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors " +
+                            (selected ? "border-accent ring-2 ring-accent" : "border-line"),
+                    );
+                    button.type = "button";
+                    button.title = name;
+                    button.setAttribute("aria-label", name + " avatar");
+                    button.setAttribute("aria-pressed", selected);
+                    const image = el("img", "h-12 w-12 rounded-full object-cover");
+                    image.src = src;
+                    image.alt = "";
+                    button.append(image);
+                    button.onclick = () => {
+                        addPersonAvatar = "bird";
+                        addPersonImage = src;
+                        $("person-image").value = "";
+                        renderPersonAvatarChoices();
+                        renderPersonPreview();
+                    };
+                    birdChoices.append(button);
+                });
+            }
+            function renderPersonPreview() {
+                const preview = $("person-avatar-preview");
+                preview.innerHTML = "";
+                const name = $("person-name").value.trim() || "Preview";
+                preview.append(
+                    avatarNode(
+                        { name, avatar: addPersonAvatar, image: addPersonImage },
+                        36,
+                    ),
+                    el("span", null, "Avatar preview"),
+                );
+
+            }
+            function renderPeopleAdmin() {
+                const section = $("people-admin");
+                section.style.display = demo ? "none" : "";
+                if (demo) return;
+                const cards = $("person-cards");
+                cards.innerHTML = "";
+                $("person-list-status").textContent = "";
+                if (!people.length)
+                    cards.append(
+                        el(
+                            "p",
+                            "text-xs text-mute py-1",
+                            "No people yet. Add someone to assign events to them.",
+                        ),
+                    );
+                people.forEach((person) => {
+                    const row = el(
+                        "div",
+                        "flex items-center gap-3 border-b border-line py-2 last:border-b-0",
+                    );
+                    row.append(
+                        avatarNode(person, 36),
+                        el("span", "flex-1 min-w-0 truncate text-sm font-medium", person.name),
+                    );
+
+                    const remove = el(
+                        "button",
+                        "h-9 w-9 grid place-items-center rounded-lg text-mute hover:text-rose-600",
+                    );
+                    remove.type = "button";
+                    remove.innerHTML = ic("trash-2", 16);
+                    remove.setAttribute("aria-label", "Remove " + person.name);
+                    remove.title = "Remove person";
+                    remove.onclick = () => removePerson(person);
+                    row.append(remove);
+                    cards.append(row);
+                });
+                $("person-form").classList.toggle("hidden", !personFormOpen);
+                $("person-add-toggle").classList.toggle("hidden", personFormOpen);
+                $("person-add-save").disabled = personSaving;
+                $("person-add-cancel").disabled = personSaving;
+                $("person-add-save").textContent = personSaving
+                    ? "Saving…"
+                    : "Save person";
+                renderPersonAvatarChoices();
+                renderPersonPreview();
+            }
+            async function encodeAvatar(file) {
+                if (!/^image\/(png|jpeg|webp)$/.test(file.type))
+                    throw new Error("Choose a PNG, JPEG, or WebP image.");
+                if (file.size > 10 * 1024 * 1024)
+                    throw new Error("Choose an image smaller than 10 MB.");
+                const url = URL.createObjectURL(file);
+                try {
+                    const image = new Image();
+                    await new Promise((resolve, reject) => {
+                        image.onload = resolve;
+                        image.onerror = () => reject(new Error("Could not read that image."));
+                        image.src = url;
+                    });
+                    const size = 256,
+                        scale = Math.max(size / image.naturalWidth, size / image.naturalHeight),
+                        width = image.naturalWidth * scale,
+                        height = image.naturalHeight * scale,
+                        canvas = document.createElement("canvas");
+                    canvas.width = size;
+                    canvas.height = size;
+                    canvas.getContext("2d").drawImage(
+                        image,
+                        (size - width) / 2,
+                        (size - height) / 2,
+                        width,
+                        height,
+                    );
+                    return canvas.toDataURL("image/webp", 0.82);
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            }
+            function resetPersonForm() {
+                personFormOpen = false;
+                personSaving = false;
+                addPersonAvatar = "person";
+                addPersonImage = null;
+                $("person-name").value = "";
+                $("person-image").value = "";
+                $("person-status").textContent = "";
+            }
+            async function savePerson() {
+                const name = $("person-name").value.trim();
+                if (!name) {
+                    $("person-status").textContent = "Enter a name for this person.";
+                    return;
+                }
+                personSaving = true;
+                $("person-add-save").disabled = true;
+                $("person-add-save").textContent = "Saving…";
+                $("person-status").textContent = "";
+                try {
+                    const result = await api("POST", "/api/config/people", {
+                        name,
+                        avatar: addPersonAvatar,
+                        image: addPersonImage,
+                    });
+                    people = result.people;
+                    resetPersonForm();
+                    renderWhoOptions();
+                    saveSet();
+                    render();
+                } catch (error) {
+                    personSaving = false;
+                    $("person-add-save").disabled = false;
+                    $("person-add-cancel").disabled = false;
+                    $("person-add-save").textContent = "Save person";
+                    $("person-status").textContent = error.message;
+                }
+            }
+            async function removePerson(person) {
+                if (!confirm(`Remove ${person.name}? Existing events will keep their saved name.`))
+                    return;
+                try {
+                    const result = await api(
+                        "DELETE",
+                        "/api/config/people/" + encodeURIComponent(person.id),
+                    );
+                    people = result.people;
+                    if (filt === "person:" + person.id) filt = null;
+                    renderWhoOptions();
+                    saveSet();
+                    render();
+                } catch (error) {
+                    $("person-list-status").textContent = error.message;
+                }
             }
             function renderCals() {
                 renderCalendarChoices();
@@ -1406,10 +1717,12 @@
                     .filter((calendar) => !["event", "reminder", "dinner"].includes(calendar.id))
                     .forEach((calendar) => addRow(calendar, true));
                 $("calendar-add-section").style.display = demo ? "none" : "";
-                $("peoplewrap").style.display = nAct > 1 ? "" : "none";
+                renderPeopleAdmin();
+                const filterMembers = [...M.filter((member) => member.on), ...people];
+                $("peoplewrap").style.display = filterMembers.length > 1 ? "" : "none";
                 const pp = $("people");
                 pp.innerHTML = "";
-                if (nAct > 1) {
+                if (filterMembers.length > 1) {
                     const all = el(
                         "button",
                         "h-9 px-3 rounded-full border text-sm font-semibold " +
@@ -1418,30 +1731,40 @@
                                 : "border-line"),
                         "All",
                     );
+                    all.setAttribute("aria-pressed", filt === null);
                     all.onclick = () => {
                         filt = null;
                         saveSet();
                         render();
                     };
                     pp.append(all);
-                    M.forEach((m, i) => {
-                        if (!m.on) return;
-                        const b = el(
-                            "button",
-                            "h-9 px-3 rounded-full border text-sm font-semibold " +
-                                (filt === i
-                                    ? "border-accent ring-2 ring-accent"
-                                    : "border-line"),
-                            m.n,
-                        );
-                        b.style.background = m.c;
-                        b.style.color = INK;
-                        b.onclick = () => {
-                            filt = filt === i ? null : i;
+                    filterMembers.forEach((member) => {
+                        const key = personFilterKey(member),
+                            isPerson = !!member.id,
+                            button = el(
+                                "button",
+                                "h-9 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-semibold " +
+                                    (filt === key
+                                        ? "border-accent ring-2 ring-accent"
+                                        : "border-line"),
+                            );
+                        button.setAttribute("aria-pressed", filt === key);
+                        if (isPerson) {
+                            button.append(
+                                avatarNode(member, 22),
+                                el("span", null, member.name),
+                            );
+                        } else {
+                            button.textContent = member.n;
+                            button.style.background = member.c;
+                            button.style.color = INK;
+                        }
+                        button.onclick = () => {
+                            filt = filt === key ? null : key;
                             saveSet();
                             render();
                         };
-                        pp.append(b);
+                        pp.append(button);
                     });
                 }
                 renderCalendarPage();
@@ -1608,10 +1931,9 @@
                     "hidden",
                     addKind !== "event" || eventCalendars.length <= 1,
                 );
-                const who = addKind === "event" && nAct > 1;
+                const who = addKind === "event" && people.length > 0;
                 const timed = addKind === "event";
-                $("who").style.display = who ? "" : "none";
-                $("who").style.gridColumn = who ? "1 / 3" : "";
+                $("who-wrap").classList.toggle("hidden", !who);
                 $("timewrap").style.display = timed ? "" : "none";
                 $("endtimewrap").style.display = timed ? "" : "none";
             }
@@ -1641,7 +1963,16 @@
                     kind: addKind,
                 };
                 if (addKind === "event") {
-                    b.m = M[+$("who").value].n;
+                    const matches = personTitleMatches(t),
+                        person =
+                            matches.length === 1
+                                ? matches[0]
+                                : people.find(
+                                      (candidate) =>
+                                          candidate.id === $("who").value,
+                                  );
+                    b.m = person?.name || "Family";
+                    if (person) b.personId = person.id;
                     if ($("calendar-target").value)
                         b.calendarId = $("calendar-target").value;
                 }
@@ -1780,6 +2111,38 @@
             };
             $("calendar-add-save").onclick = saveCalendar;
             updateCalendarAddButton();
+            $("person-add-toggle").onclick = () => {
+                personFormOpen = true;
+                setTab = "people";
+                $("person-status").textContent = "";
+                render();
+                $("person-name").focus();
+            };
+            $("person-add-cancel").onclick = () => {
+                resetPersonForm();
+                render();
+                $("person-add-toggle").focus();
+            };
+            $("person-add-save").onclick = savePerson;
+            $("person-name").oninput = renderPersonPreview;
+            $("person-image").onchange = async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                $("person-status").textContent = "Preparing avatar…";
+                try {
+                    addPersonImage = await encodeAvatar(file);
+                    $("person-status").textContent = "";
+                    renderPersonAvatarChoices();
+                    renderPersonPreview();
+                } catch (error) {
+                    addPersonImage = null;
+                    $("person-status").textContent = error.message;
+                }
+            };
+            $("title").oninput = () => {
+                const matches = personTitleMatches($("title").value);
+                if (matches.length === 1) $("who").value = matches[0].id;
+            };
             $("title").onkeydown = (e) => {
                 if (e.key === "Enter") add();
             };
@@ -1794,6 +2157,10 @@
                         calendarFormOpen = false;
                         render();
                         $("calendar-add-toggle").focus();
+                    } else if (personFormOpen) {
+                        resetPersonForm();
+                        render();
+                        $("person-add-toggle").focus();
                     } else {
                         setOpen = false;
                         calendarFormOpen = false;
@@ -1832,6 +2199,7 @@
             $("sclose").onclick = () => {
                 setOpen = false;
                 calendarFormOpen = false;
+                personFormOpen = false;
                 renderCalendarPage();
                 render();
             };
@@ -1839,6 +2207,7 @@
                 if (e.target === $("settings")) {
                     setOpen = false;
                     calendarFormOpen = false;
+                    personFormOpen = false;
                     renderCalendarPage();
                     render();
                 }
@@ -1890,6 +2259,14 @@
                     .then((c) => {
                         kinds = c.kinds;
                         calendarConfigs = c.calendars || [];
+                        people = c.people || [];
+                        renderWhoOptions();
+                        if (
+                            filt &&
+                            filt.startsWith("person:") &&
+                            !people.some((person) => filt === "person:" + person.id)
+                        )
+                            filt = null;
                         render();
                     })
                     .catch(() => {});

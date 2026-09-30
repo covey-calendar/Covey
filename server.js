@@ -11,6 +11,8 @@ import {
   loadCalendarStore,
   saveCalendarStore,
 } from './calendar-store.js';
+import { isValidPersonImage, loadPeopleStore, savePeopleStore } from './people-store.js';
+
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const {
@@ -29,15 +31,28 @@ if (!ICLOUD_EMAIL || !ICLOUD_APP_PASSWORD) {
 
 const dataDir = COVEY_DATA_DIR ? path.resolve(COVEY_DATA_DIR) : path.join(here, 'data');
 const calendarStorePath = path.join(dataDir, 'calendars.json');
+const peopleStorePath = path.join(dataDir, 'people.json');
 let calendars;
+let people;
+
+console.log('A: env ok, loading calendars from', calendarStorePath);
 try {
   calendars = loadCalendarStore(calendarStorePath, {
     CALENDAR_NAME,
     REMINDERS_CALENDAR,
     DINNER_CALENDAR,
   });
+  console.log('B: calendars loaded');
+
 } catch (error) {
   console.error(`Unable to load calendar configuration: ${error.message}`);
+  process.exit(1);
+}
+try {
+  people = loadPeopleStore(peopleStorePath);
+  console.log('C: people loaded');
+} catch (error) {
+  console.error(`Unable to load people configuration: ${error.message}`);
   process.exit(1);
 }
 let KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
@@ -97,7 +112,7 @@ function startStatusLine(url) {
 
 const app = express();
 app.use((_req, _res, next) => { reqCount++; next(); });
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => {
   const page = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
   res.type('html').send(page.replace('<!--SERVER-->', '<script>window.GAGGLE_SERVER = true</script>'));
@@ -112,11 +127,67 @@ const publicCalendars = () => calendars.map(({ id, name, type, color, icon }) =>
   ...(color ? { color } : {}),
   ...(icon ? { icon } : {}),
 }));
+const publicPeople = () => people;
 
 app.get('/api/config', (_req, res) => res.json({
   kinds: KINDS,
   calendars: publicCalendars(),
+  people: publicPeople(),
 }));
+app.get('/api/config/people', (_req, res) => res.json({ people: publicPeople() }));
+
+app.post('/api/config/people', (req, res) => {
+  const { name, avatar = 'person', image = null } = req.body || {};
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (!trimmedName || trimmedName.length > 60) {
+    return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
+  }
+  if (trimmedName.toLocaleLowerCase() === 'family') {
+    return res.status(400).json({ error: '“Family” is reserved for shared family events.' });
+  }
+  if (people.some((person) => person.name.toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) {
+    return res.status(409).json({ error: `A person named “${trimmedName}” already exists.` });
+  }
+  if (!['person', 'child', 'baby', 'bird'].includes(avatar)) {
+    return res.status(400).json({ error: 'Choose one of the available basic avatars.' });
+  }
+  if (!isValidPersonImage(image)) {
+    return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
+  }
+
+  const baseId = trimmedName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50) || 'person';
+  let id = baseId;
+  let suffix = 2;
+  while (people.some((person) => person.id === id)) {
+    id = `${baseId}-${suffix++}`;
+  }
+  try {
+    people = savePeopleStore(peopleStorePath, [...people, { id, name: trimmedName, avatar, image }]);
+    res.status(201).json({ people: publicPeople(), person: people.find((person) => person.id === id) });
+  } catch (error) {
+    console.error('Unable to save person:', error);
+    res.status(500).json({ error: `Could not save person: ${error.message}` });
+  }
+});
+
+app.delete('/api/config/people/:id', (req, res) => {
+  const { id } = req.params;
+  if (!people.some((person) => person.id === id)) {
+    return res.status(404).json({ error: 'Person not found.' });
+  }
+  try {
+    people = savePeopleStore(peopleStorePath, people.filter((person) => person.id !== id));
+    res.json({ people: publicPeople() });
+  } catch (error) {
+    res.status(500).json({ error: `Could not remove person: ${error.message}` });
+  }
+});
 
 app.post('/api/config/calendars', async (req, res) => {
   const { name, color, icon, confirmedExisting } = req.body || {};
@@ -233,13 +304,18 @@ app.get('/api/events', wrap(async (req, res) => {
 }));
 
 app.post('/api/events', wrap(async (req, res) => {
-  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId } = req.body || {};
+  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId, personId } = req.body || {};
   const validTime = value => /^(\d{2}:\d{2})?$/.test(value);
   if (typeof t !== 'string' || !t.trim() || t.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(d) ||
       !validTime(tm) || !validTime(te) || (te && (!tm || te <= tm)) ||
-      typeof m !== 'string' || m.length > 40 || typeof kind !== 'string' ||
-      (calendarId !== undefined && typeof calendarId !== 'string')) {
+      typeof m !== 'string' || m.length > 60 || typeof kind !== 'string' ||
+      (calendarId !== undefined && typeof calendarId !== 'string') ||
+      (personId !== undefined && typeof personId !== 'string')) {
     return res.status(400).json({ error: 'Invalid event' });
+  }
+  const person = personId ? people.find((candidate) => candidate.id === personId) : null;
+  if (personId && (!person || kind !== 'event')) {
+    return res.status(400).json({ error: 'Choose a valid person for this event.' });
   }
   const { client, cals } = await connect();
   const target = calendarId
@@ -254,7 +330,8 @@ app.post('/api/events', wrap(async (req, res) => {
       uid, title: t.trim(), date: d,
       time: kind === 'event' ? tm : '',        // reminders and dinner are all-day entries
       endTime: kind === 'event' ? te : '',     // optional; defaults to one hour after start
-      member: kind === 'event' ? m : '',        // people tags only on the shared calendar
+      member: kind === 'event' ? (person?.name || m) : '', // retain a readable category in iCloud
+      personId: kind === 'event' ? person?.id : '',
       alarm: kind === 'reminder',               // reminders alert on the phone
     }),
   });

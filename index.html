@@ -302,10 +302,17 @@
                             aria-label="End time"
                             class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
                     /></label>
-                    <select
-                        id="who"
-                        class="bg-bg border border-line rounded-lg p-2 min-w-0"
-                    ></select>
+                    <label
+                        id="who-wrap"
+                        class="hidden col-span-2 text-xs text-mute"
+                    >
+                        Person
+                        <select
+                            id="who"
+                            aria-label="Person for this event"
+                            class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
+                        ></select>
+                    </label>
                     <button
                         id="go"
                         aria-busy="false"
@@ -397,11 +404,74 @@
                                     Add calendar
                                 </button>
                             </div>
-                            <div id="peoplewrap" class="mt-2" style="display: none">
+
+                            <div id="peoplewrap" class="mt-4 border-t border-line pt-4" style="display: none">
                                 <p class="text-xs text-mute mb-1.5">
-                                    Show family events for
+                                    Filter events by person
                                 </p>
-                                <div id="people" class="flex flex-wrap gap-2"></div>
+                                <div
+                                    id="people"
+                                    role="group"
+                                    aria-label="Filter calendar by person"
+                                    class="flex flex-wrap gap-2"
+                                ></div>
+                            </div>
+                        </section>
+                    </div>
+                    <div id="tab-people">
+                        <section id="people-admin">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="text-sm font-semibold">People</h3>
+                                <button
+                                    id="person-add-toggle"
+                                    type="button"
+                                    class="inline-flex items-center gap-1 text-sm font-semibold text-accent"
+                                ><i data-i="plus" data-s="16"></i>Add person</button>
+                            </div>
+                            <div id="person-cards" class="mt-2 flex flex-col"></div>
+                            <p id="person-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
+                            <div id="person-form" class="hidden mt-3 space-y-3">
+                                <label class="block text-sm font-medium" for="person-name">
+                                    Name
+                                    <input
+                                        id="person-name"
+                                        maxlength="60"
+                                        autocomplete="off"
+                                        class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
+                                        placeholder="e.g. Stan"
+                                    />
+                                </label>
+                                <div>
+                                    <p class="mb-2 text-sm font-medium">Choose a basic avatar</p>
+                                    <div id="person-avatar-choices" class="grid grid-cols-4 gap-2"></div>
+                                </div>
+                                <div>
+                                    <p class="mb-2 text-sm font-medium">Bird photos</p>
+                                    <div id="person-bird-choices" class="grid grid-cols-4 gap-2"></div>
+                                </div>
+                                <label class="block text-sm font-medium" for="person-image">
+                                    Or upload a custom avatar
+                                    <input
+                                        id="person-image"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        class="mt-1 block w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-bg file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
+                                    />
+                                </label>
+                                <div id="person-avatar-preview" class="flex items-center gap-2 text-xs text-mute"></div>
+                                <div class="flex gap-2">
+                                    <button
+                                        id="person-add-cancel"
+                                        type="button"
+                                        class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
+                                    >Cancel</button>
+                                    <button
+                                        id="person-add-save"
+                                        type="button"
+                                        class="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-on disabled:cursor-not-allowed disabled:opacity-50"
+                                    >Save person</button>
+                                </div>
+                                <p id="person-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                             </div>
                         </section>
                     </div>
@@ -585,4 +655,5 @@
         </div>
 
         <script src="app.js"></script>
+    </body>
 </html>

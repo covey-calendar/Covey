@@ -9,7 +9,7 @@ const esc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/
 export const isoDate = d => iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
 
 // Build a single-event .ics. Times are "floating" (same wall-clock time on every device).
-export function buildICS({ uid, title, date, time, endTime, member, alarm }) {
+export function buildICS({ uid, title, date, time, endTime, member, personId, alarm }) {
   const [y, mo, da] = date.split('-').map(Number);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   let when;
@@ -28,6 +28,7 @@ export function buildICS({ uid, title, date, time, endTime, member, alarm }) {
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gaggle//Family Calendar//EN', 'BEGIN:VEVENT',
     `UID:${uid}`, `DTSTAMP:${stamp}`, `SUMMARY:${esc(title)}`,
     ...(member ? [`CATEGORIES:${esc(member)}`] : []),
+    ...(personId ? [`X-COVEY-PERSON-ID:${esc(personId)}`] : []),
     ...when,
     ...(alarm ? ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', `TRIGGER:${time ? 'PT0S' : 'PT9H'}`, 'END:VALARM'] : []),
     'END:VEVENT', 'END:VCALENDAR',
@@ -57,7 +58,14 @@ export function parseEvents(obj, from, to) {
     try {
       const ev = new ICAL.Event(vevent);
       if (ev.isRecurrenceException()) continue;
-      const base = { id: obj.url, url: obj.url, etag: obj.etag, t: ev.summary || '(no title)', m: String(vevent.getFirstPropertyValue('categories') || '') };
+      const base = {
+        id: obj.url,
+        url: obj.url,
+        etag: obj.etag,
+        t: ev.summary || '(no title)',
+        m: String(vevent.getFirstPropertyValue('categories') || ''),
+        personId: String(vevent.getFirstPropertyValue('x-covey-person-id') || ''),
+      };
       if (ev.isRecurring()) {
         const it = ev.iterator();
         for (let n, i = 0; (n = it.next()) && i < 1000; i++) {
