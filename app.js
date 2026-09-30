@@ -48,6 +48,8 @@
                     '<path d="M6 7h12l1 14H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
                 users: '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
                 baby: '<path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1 4.7c0 5-3.5 9-8 9s-8-4-8-9a9 9 0 0 1 1.3-4.7"/><path d="M12 2c1.5 0 3 .5 4.5 1.5"/>',
+                pencil:
+                    '<path d="m16 5 3 3"/><path d="m4 20 4-.8L19 8a2.12 2.12 0 0 0-3-3L5 16l-1 4Z"/>',
                 "trash-2":
                     '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             };
@@ -1643,7 +1645,7 @@
                 }).forEach(([key, label]) => {
                     const button = el(
                         "button",
-                        "h-16 flex flex-col items-center justify-center gap-1 rounded-lg border " +
+                        "h-14 grid place-items-center rounded-lg border " +
                             (addPersonAvatar === key && !addPersonImage
                                 ? "border-accent ring-2 ring-accent"
                                 : "border-line"),
@@ -1655,10 +1657,7 @@
                         "aria-pressed",
                         addPersonAvatar === key && !addPersonImage,
                     );
-                    button.append(
-                        avatarNode({ avatar: key, name: label }, 28),
-                        el("span", "text-[10px] text-mute", label),
-                    );
+                    button.append(avatarNode({ avatar: key, name: label }, 28));
                     button.onclick = () => {
                         addPersonAvatar = key;
                         addPersonImage = null;
@@ -1749,11 +1748,12 @@
 
                     const edit = el(
                         "button",
-                        "h-9 rounded-lg px-2 text-sm font-semibold text-accent hover:bg-bg",
-                        "Edit",
+                        "h-9 w-9 grid place-items-center rounded-lg text-mute hover:bg-bg hover:text-accent",
                     );
                     edit.type = "button";
+                    edit.innerHTML = ic("pencil", 16);
                     edit.setAttribute("aria-label", "Edit " + person.name);
+                    edit.title = "Edit person";
                     edit.onclick = () => openPersonForm(person);
                     row.append(edit);
                     const remove = el(
@@ -2121,7 +2121,7 @@
                 choices.innerHTML = "";
                 [
                     [false, "Full day"],
-                    [true, "8 AM–8 PM"],
+                    [true, "Compact"],
                 ].forEach(([compact, label]) => {
                     const button = el(
                         "button",
