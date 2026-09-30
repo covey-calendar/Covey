@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "setup": "node setup.js",
-    "start": "node start.js"
+    "start": "node start.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20.0"

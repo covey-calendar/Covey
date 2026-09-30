@@ -302,17 +302,18 @@
                             aria-label="End time"
                             class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
                     /></label>
-                    <label
+                    <div
                         id="who-wrap"
                         class="hidden col-span-2 text-xs text-mute"
                     >
-                        Person
-                        <select
-                            id="who"
-                            aria-label="Person for this event"
-                            class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
-                        ></select>
-                    </label>
+                        <span>People</span>
+                        <div
+                            id="who-options"
+                            class="mt-1 flex flex-wrap gap-2"
+                            role="group"
+                            aria-label="People for this event"
+                        ></div>
+                    </div>
                     <button
                         id="go"
                         aria-busy="false"

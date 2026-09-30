@@ -304,18 +304,23 @@ app.get('/api/events', wrap(async (req, res) => {
 }));
 
 app.post('/api/events', wrap(async (req, res) => {
-  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId, personId } = req.body || {};
+  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId, personId, personIds } = req.body || {};
   const validTime = value => /^(\d{2}:\d{2})?$/.test(value);
   if (typeof t !== 'string' || !t.trim() || t.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(d) ||
       !validTime(tm) || !validTime(te) || (te && (!tm || te <= tm)) ||
       typeof m !== 'string' || m.length > 60 || typeof kind !== 'string' ||
       (calendarId !== undefined && typeof calendarId !== 'string') ||
-      (personId !== undefined && typeof personId !== 'string')) {
+      (personId !== undefined && typeof personId !== 'string') ||
+      (personIds !== undefined && (!Array.isArray(personIds) || personIds.length > 100 || personIds.some((id) => typeof id !== 'string')))) {
     return res.status(400).json({ error: 'Invalid event' });
   }
-  const person = personId ? people.find((candidate) => candidate.id === personId) : null;
-  if (personId && (!person || kind !== 'event')) {
-    return res.status(400).json({ error: 'Choose a valid person for this event.' });
+  const requestedPersonIds = personIds ?? (personId ? [personId] : []);
+  if (new Set(requestedPersonIds).size !== requestedPersonIds.length) {
+    return res.status(400).json({ error: 'Choose each person only once.' });
+  }
+  const assignedPeople = requestedPersonIds.map((id) => people.find((candidate) => candidate.id === id));
+  if (assignedPeople.some((person) => !person) || (assignedPeople.length && kind !== 'event')) {
+    return res.status(400).json({ error: 'Choose valid people for this event.' });
   }
   const { client, cals } = await connect();
   const target = calendarId
@@ -330,8 +335,12 @@ app.post('/api/events', wrap(async (req, res) => {
       uid, title: t.trim(), date: d,
       time: kind === 'event' ? tm : '',        // reminders and dinner are all-day entries
       endTime: kind === 'event' ? te : '',     // optional; defaults to one hour after start
-      member: kind === 'event' ? (person?.name || m) : '', // retain a readable category in iCloud
-      personId: kind === 'event' ? person?.id : '',
+      member: kind === 'event' ? (assignedPeople[0]?.name || m) : '',
+      members: kind === 'event'
+        ? (assignedPeople.length ? assignedPeople.map((person) => person.name) : [m])
+        : [],
+      personId: kind === 'event' ? assignedPeople[0]?.id : '',
+      personIds: kind === 'event' ? assignedPeople.map((person) => person.id) : [],
       alarm: kind === 'reminder',               // reminders alert on the phone
     }),
   });

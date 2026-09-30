@@ -83,7 +83,7 @@
                 { name: "Goldfinch", src: "/images/goldfinch.png" },
                 { name: "Robin", src: "/images/blue-jay.png" },
             ];
-            const FAMILY_OPTION = "__family__";
+
             const INK = "#2b2622";
             const CALENDAR_COLORS = {
                 coral: { label: "Coral", bg: "#f8c8c0", fg: "#b8503f" },
@@ -139,8 +139,47 @@
                             ic(icon, 14) +
                             "</span>",
                     );
-                const person = personForEvent(e);
-                if (person) n.prepend(avatarNode(person, 16));
+                const assignedPeople = peopleForEvent(e);
+                if (assignedPeople.length) {
+                    const facepile = el("span", "inline-flex items-center");
+                    facepile.style.position = "absolute";
+                    facepile.style.right = "4px";
+                    facepile.style.top = "50%";
+                    facepile.style.transform = "translateY(-50%)";
+                    facepile.title = assignedPeople
+                        .map((person) => person.name)
+                        .join(", ");
+                    facepile.setAttribute("aria-hidden", "true");
+                    const visiblePeople = assignedPeople.slice(0, 2);
+                    visiblePeople.forEach((person, index) => {
+                        const avatar = avatarNode(person, 20);
+                        avatar.style.border = "1px solid var(--card)";
+                        avatar.style.marginLeft = index ? "-4px" : "0";
+                        avatar.title = person.name;
+                        facepile.append(avatar);
+                    });
+                    if (assignedPeople.length > visiblePeople.length) {
+                        const overflow = el(
+                            "span",
+                            "relative inline-grid place-items-center rounded-full bg-card text-ink shrink-0 text-[9px] font-semibold",
+                            "+" + (assignedPeople.length - visiblePeople.length),
+                        );
+                        overflow.style.width = "18px";
+                        overflow.style.height = "18px";
+                        overflow.style.marginLeft = "-4px";
+                        overflow.style.border = "1px solid var(--card)";
+                        facepile.append(overflow);
+                    }
+                    const facepileWidth =
+                        visiblePeople.length === 1
+                            ? 16
+                            : visiblePeople.length * 12 + 4 +
+                              (assignedPeople.length > visiblePeople.length ? 14 : 0);
+                    n.style.position = "relative";
+                    if (n.tagName === "STRONG") n.style.display = "block";
+                    n.style.paddingRight = facepileWidth + 8 + "px";
+                    n.append(facepile);
+                }
                 return n;
             };
             const mi = (n) => {
@@ -246,6 +285,8 @@
             } catch (e) {}
             const home = () =>
                 days === 7 ? sunday(iso(new Date())) : iso(new Date());
+            let selectedPersonIds = new Set(),
+                personSelectionTouched = false;
             let calendarConfigs = [],
                 addCalendarColor = "teal",
                 addCalendarIcon = "calendar",
@@ -352,27 +393,61 @@
                 if (x != null) e.textContent = x;
                 return e;
             }
-            const personForEvent = (event) =>
-                people.find((person) => person.id === event.personId) ||
-                people.find(
-                    (person) =>
-                        !event.personId &&
-                        person.name.toLocaleLowerCase() ===
-                            String(event.m || "").toLocaleLowerCase(),
+            function peopleForEvent(event) {
+                const ids = Array.isArray(event.personIds) && event.personIds.length
+                    ? event.personIds
+                    : event.personId
+                      ? [event.personId]
+                      : [];
+                const byId = ids
+                    .map((id) => people.find((person) => person.id === id))
+                    .filter(Boolean);
+                if (byId.length) return byId;
+                const categories = Array.isArray(event.members)
+                    ? event.members
+                    : event.m
+                      ? [event.m]
+                      : [];
+                const byCategory = people.filter((person) =>
+                    categories.some(
+                        (name) =>
+                            person.name.toLocaleLowerCase() ===
+                            String(name).toLocaleLowerCase(),
+                    ),
                 );
+                return byCategory.length
+                    ? byCategory
+                    : personTitleMatches(
+                          [event.t, event.notes].filter(Boolean).join("\n"),
+                      );
+            }
             const personFilterKey = (person) =>
                 person.id ? "person:" + person.id : "member:" + person.n;
-            const eventMemberName = (event) =>
-                personForEvent(event)?.name || event.m || "Family";
-            const eventFilterKey = (event) => {
-                const person = personForEvent(event);
-                return person
-                    ? "person:" + person.id
-                    : "member:" + eventMemberName(event);
+            const eventMemberName = (event) => {
+                const assigned = peopleForEvent(event);
+                return assigned.length
+                    ? assigned.map((person) => person.name).join(", ")
+                    : event.m || "Family";
+            };
+            const eventFilterKeys = (event) => {
+                const assigned = peopleForEvent(event);
+                return assigned.length
+                    ? assigned.map(personFilterKey)
+                    : ["member:" + eventMemberName(event)];
             };
             const eventDisplayTitle = (event) => {
-                const member = eventMemberName(event);
-                return event.kind === "event" && member !== "Family"
+                const assigned = peopleForEvent(event),
+                    mentioned = personTitleMatches(event.t || ""),
+                    unmentionedNames = assigned
+                        .filter(
+                            (person) =>
+                                !mentioned.some((match) => match.id === person.id),
+                        )
+                        .map((person) => person.name),
+                    member = assigned.length
+                        ? unmentionedNames.join(", ")
+                        : eventMemberName(event);
+                return event.kind === "event" && member && member !== "Family"
                     ? event.t + " · " + member
                     : event.t;
             };
@@ -397,27 +472,50 @@
                 }
                 return avatar;
             }
-            function renderWhoOptions(selected = FAMILY_OPTION) {
-                const select = $("who");
-                select.innerHTML = "";
-                const family = el("option", null, "Family");
-                family.value = FAMILY_OPTION;
-                select.append(family);
+            function renderWhoOptions() {
+                const options = $("who-options");
+                options.innerHTML = "";
                 people.forEach((person) => {
-                    const option = el("option", null, person.name);
-                    option.value = person.id;
-                    select.append(option);
+                    const selected = selectedPersonIds.has(person.id),
+                        button = el(
+                            "button",
+                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-sm font-medium " +
+                                (selected
+                                    ? "border-accent bg-accent/10 ring-1 ring-accent"
+                                    : "border-line bg-bg"),
+                        );
+                    button.type = "button";
+                    button.setAttribute("aria-pressed", selected);
+                    button.setAttribute(
+                        "aria-label",
+                        (selected ? "Remove " : "Add ") + person.name,
+                    );
+                    button.append(
+                        avatarNode(person, 20),
+                        el("span", null, person.name),
+                    );
+                    button.onclick = () => {
+                        if (selected) selectedPersonIds.delete(person.id);
+                        else selectedPersonIds.add(person.id);
+                        personSelectionTouched = true;
+                        renderWhoOptions();
+                    };
+                    options.append(button);
                 });
-                select.value =
-                    selected === FAMILY_OPTION || people.some((person) => person.id === selected)
-                        ? selected
-                        : FAMILY_OPTION;
+            }
+            function syncTitlePeople(title) {
+                if (personSelectionTouched) return;
+                selectedPersonIds = new Set(
+                    personTitleMatches(title).map((person) => person.id),
+                );
+                renderWhoOptions();
             }
             function personTitleMatches(title) {
-                const normalized = title.toLocaleLowerCase().replace(/’/g, "'");
-                const isWordCharacter = (character) =>
-                    !!character && /[\p{L}\p{N}]/u.test(character);
-                return people.filter((person) => {
+                const normalized = title.toLocaleLowerCase().replace(/’/g, "'"),
+                    isWordCharacter = (character) =>
+                        !!character && /[\p{L}\p{N}]/u.test(character),
+                    occurrences = [];
+                people.forEach((person) => {
                     const name = person.name.toLocaleLowerCase().replace(/’/g, "'");
                     let start = -1;
                     while ((start = normalized.indexOf(name, start + 1)) >= 0) {
@@ -426,10 +524,24 @@
                         if (normalized.slice(end, end + 2) === "'s") end += 2;
                         const after = normalized[end] || "";
                         if (!isWordCharacter(before) && !isWordCharacter(after))
-                            return true;
+                            occurrences.push({ person, start, end, nameLength: name.length });
                     }
-                    return false;
                 });
+                const matchedIds = new Set(
+                    occurrences
+                        .filter(
+                            (occurrence) =>
+                                !occurrences.some(
+                                    (other) =>
+                                        other.person.id !== occurrence.person.id &&
+                                        other.nameLength > occurrence.nameLength &&
+                                        other.start <= occurrence.start &&
+                                        other.end >= occurrence.end,
+                                ),
+                        )
+                        .map((occurrence) => occurrence.person.id),
+                );
+                return people.filter((person) => matchedIds.has(person.id));
             }
             // All server-backed event operations go through this small JSON API
             // wrapper so errors are surfaced consistently in the UI.
@@ -1113,7 +1225,7 @@
                         return (
                             e.kind !== "event" ||
                             filt === null ||
-                            eventFilterKey(e) === filt
+                            eventFilterKeys(e).includes(filt)
                         );
                     },
                     on = (e, k) => e.d === k && vis(e);
@@ -1595,6 +1707,7 @@
                     });
                     people = result.people;
                     resetPersonForm();
+                    syncTitlePeople($("title").value);
                     renderWhoOptions();
                     saveSet();
                     render();
@@ -1615,7 +1728,9 @@
                         "/api/config/people/" + encodeURIComponent(person.id),
                     );
                     people = result.people;
+                    selectedPersonIds.delete(person.id);
                     if (filt === "person:" + person.id) filt = null;
+                    syncTitlePeople($("title").value);
                     renderWhoOptions();
                     saveSet();
                     render();
@@ -1963,16 +2078,11 @@
                     kind: addKind,
                 };
                 if (addKind === "event") {
-                    const matches = personTitleMatches(t),
-                        person =
-                            matches.length === 1
-                                ? matches[0]
-                                : people.find(
-                                      (candidate) =>
-                                          candidate.id === $("who").value,
-                                  );
-                    b.m = person?.name || "Family";
-                    if (person) b.personId = person.id;
+                    const assignedPeople = personSelectionTouched
+                        ? people.filter((person) => selectedPersonIds.has(person.id))
+                        : personTitleMatches(t);
+                    b.m = assignedPeople[0]?.name || "Family";
+                    b.personIds = assignedPeople.map((person) => person.id);
                     if ($("calendar-target").value)
                         b.calendarId = $("calendar-target").value;
                 }
@@ -1993,6 +2103,9 @@
                     $("title").value = "";
                     $("time").value = "";
                     $("endtime").value = "";
+                    selectedPersonIds.clear();
+                    personSelectionTouched = false;
+                    renderWhoOptions();
                     closeSheet();
                     await load();
                 } catch (e) {
@@ -2140,8 +2253,7 @@
                 }
             };
             $("title").oninput = () => {
-                const matches = personTitleMatches($("title").value);
-                if (matches.length === 1) $("who").value = matches[0].id;
+                syncTitlePeople($("title").value);
             };
             $("title").onkeydown = (e) => {
                 if (e.key === "Enter") add();
@@ -2260,6 +2372,7 @@
                         kinds = c.kinds;
                         calendarConfigs = c.calendars || [];
                         people = c.people || [];
+                        syncTitlePeople($("title").value);
                         renderWhoOptions();
                         if (
                             filt &&
