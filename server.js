@@ -176,6 +176,41 @@ app.post('/api/config/people', (req, res) => {
   }
 });
 
+app.put('/api/config/people/:id', (req, res) => {
+  const person = people.find((entry) => entry.id === req.params.id);
+  if (!person) {
+    return res.status(404).json({ error: 'Person not found.' });
+  }
+
+  const { name, avatar = person.avatar, image = person.image } = req.body || {};
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (!trimmedName || trimmedName.length > 60) {
+    return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
+  }
+  if (trimmedName.toLocaleLowerCase() === 'family') {
+    return res.status(400).json({ error: '“Family” is reserved for shared family events.' });
+  }
+  if (people.some((entry) => entry.id !== person.id && entry.name.toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) {
+    return res.status(409).json({ error: `A person named “${trimmedName}” already exists.` });
+  }
+  if (!['person', 'child', 'baby', 'bird'].includes(avatar)) {
+    return res.status(400).json({ error: 'Choose one of the available basic avatars.' });
+  }
+  if (!isValidPersonImage(image)) {
+    return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
+  }
+
+  try {
+    people = savePeopleStore(peopleStorePath, people.map((entry) =>
+      entry.id === person.id ? { ...entry, name: trimmedName, avatar, image } : entry,
+    ));
+    res.json({ people: publicPeople(), person: people.find((entry) => entry.id === person.id) });
+  } catch (error) {
+    console.error('Unable to update person:', error);
+    res.status(500).json({ error: `Could not update person: ${error.message}` });
+  }
+});
+
 app.delete('/api/config/people/:id', (req, res) => {
   const { id } = req.params;
   if (!people.some((person) => person.id === id)) {

@@ -447,17 +447,19 @@
                     </div>
                     <div id="tab-people">
                         <section id="people-admin">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-sm font-semibold">People</h3>
-                                <button
-                                    id="person-add-toggle"
-                                    type="button"
-                                    class="inline-flex items-center gap-1 text-sm font-semibold text-accent"
-                                ><i data-i="plus" data-s="16"></i>Add person</button>
+                            <div id="person-main-view">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h3 class="text-sm font-semibold">People</h3>
+                                    <button
+                                        id="person-add-toggle"
+                                        type="button"
+                                        class="inline-flex items-center gap-1 text-sm font-semibold text-accent"
+                                    ><i data-i="plus" data-s="16"></i>Add person</button>
+                                </div>
+                                <div id="person-cards" class="mt-2 flex flex-col"></div>
+                                <p id="person-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                             </div>
-                            <div id="person-cards" class="mt-2 flex flex-col"></div>
-                            <p id="person-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
-                            <div id="person-form" class="hidden mt-3 space-y-3">
+                            <div id="person-form" class="hidden space-y-3">
                                 <label class="block text-sm font-medium" for="person-name">
                                     Name
                                     <input

@@ -294,6 +294,7 @@
                 calendarSaving = false,
                 personFormOpen = false,
                 personSaving = false,
+                editingPersonId = null,
                 addPersonAvatar = "person",
                 addPersonImage = null;
             let syncState = "pending",
@@ -1507,17 +1508,26 @@
             // Settings content is rendered on demand so each tab reflects the
             // current state without duplicating controls in the HTML.
             function renderCalendarPage() {
-                const main = $("calendar-main-view");
-                const add = $("calendar-add-view");
+                const main = $("calendar-main-view"),
+                    add = $("calendar-add-view"),
+                    subviewOpen = calendarFormOpen || personFormOpen,
+                    back = $("calendar-add-back");
                 main.classList.toggle("hidden", calendarFormOpen);
                 add.classList.toggle("hidden", !calendarFormOpen);
-                $("stabs").style.display = calendarFormOpen ? "none" : "";
+                $("stabs").style.display = subviewOpen ? "none" : "";
                 $("settings-title").textContent = calendarFormOpen
                     ? "Add calendar"
-                    : "Settings";
-                const back = $("calendar-add-back");
-                back.classList.toggle("hidden", !calendarFormOpen);
-                back.classList.toggle("grid", calendarFormOpen);
+                    : personFormOpen
+                      ? editingPersonId
+                          ? "Edit person"
+                          : "Add person"
+                      : "Settings";
+                back.classList.toggle("hidden", !subviewOpen);
+                back.classList.toggle("grid", subviewOpen);
+                back.setAttribute(
+                    "aria-label",
+                    personFormOpen ? "Back to people" : "Back to calendars",
+                );
                 main.setAttribute("aria-hidden", calendarFormOpen);
                 add.setAttribute("aria-hidden", !calendarFormOpen);
                 main.inert = calendarFormOpen;
@@ -1698,10 +1708,24 @@
                 );
 
             }
+            function openPersonForm(person = null) {
+                editingPersonId = person?.id || null;
+                personFormOpen = true;
+                setTab = "people";
+                addPersonAvatar = person?.avatar || "person";
+                addPersonImage = person?.image || null;
+                $("person-name").value = person?.name || "";
+                $("person-image").value = "";
+                $("person-status").textContent = "";
+                render();
+                $("person-name").focus();
+            }
             function renderPeopleAdmin() {
                 const section = $("people-admin");
                 section.style.display = demo ? "none" : "";
                 if (demo) return;
+                $("person-main-view").classList.toggle("hidden", personFormOpen);
+                $("person-form").classList.toggle("hidden", !personFormOpen);
                 const cards = $("person-cards");
                 cards.innerHTML = "";
                 $("person-list-status").textContent = "";
@@ -1723,6 +1747,15 @@
                         el("span", "flex-1 min-w-0 truncate text-sm font-medium", person.name),
                     );
 
+                    const edit = el(
+                        "button",
+                        "h-9 rounded-lg px-2 text-sm font-semibold text-accent hover:bg-bg",
+                        "Edit",
+                    );
+                    edit.type = "button";
+                    edit.setAttribute("aria-label", "Edit " + person.name);
+                    edit.onclick = () => openPersonForm(person);
+                    row.append(edit);
                     const remove = el(
                         "button",
                         "h-9 w-9 grid place-items-center rounded-lg text-mute hover:text-rose-600",
@@ -1735,13 +1768,14 @@
                     row.append(remove);
                     cards.append(row);
                 });
-                $("person-form").classList.toggle("hidden", !personFormOpen);
                 $("person-add-toggle").classList.toggle("hidden", personFormOpen);
                 $("person-add-save").disabled = personSaving;
                 $("person-add-cancel").disabled = personSaving;
                 $("person-add-save").textContent = personSaving
                     ? "Saving…"
-                    : "Save person";
+                    : editingPersonId
+                      ? "Save changes"
+                      : "Save person";
                 renderPersonAvatarChoices();
                 renderPersonPreview();
             }
@@ -1780,6 +1814,7 @@
             function resetPersonForm() {
                 personFormOpen = false;
                 personSaving = false;
+                editingPersonId = null;
                 addPersonAvatar = "person";
                 addPersonImage = null;
                 $("person-name").value = "";
@@ -1797,11 +1832,17 @@
                 $("person-add-save").textContent = "Saving…";
                 $("person-status").textContent = "";
                 try {
-                    const result = await api("POST", "/api/config/people", {
-                        name,
-                        avatar: addPersonAvatar,
-                        image: addPersonImage,
-                    });
+                    const result = await api(
+                        editingPersonId ? "PUT" : "POST",
+                        editingPersonId
+                            ? "/api/config/people/" + encodeURIComponent(editingPersonId)
+                            : "/api/config/people",
+                        {
+                            name,
+                            avatar: addPersonAvatar,
+                            image: addPersonImage,
+                        },
+                    );
                     people = result.people;
                     resetPersonForm();
                     syncTitlePeople($("title").value);
@@ -1812,7 +1853,9 @@
                     personSaving = false;
                     $("person-add-save").disabled = false;
                     $("person-add-cancel").disabled = false;
-                    $("person-add-save").textContent = "Save person";
+                    $("person-add-save").textContent = editingPersonId
+                        ? "Save changes"
+                        : "Save person";
                     $("person-status").textContent = error.message;
                 }
             }
@@ -2298,9 +2341,15 @@
                 $("calendar-name").focus();
             };
             $("calendar-add-back").onclick = () => {
-                calendarFormOpen = false;
-                render();
-                $("calendar-add-toggle").focus();
+                if (calendarFormOpen) {
+                    calendarFormOpen = false;
+                    render();
+                    $("calendar-add-toggle").focus();
+                } else if (personFormOpen) {
+                    personFormOpen = false;
+                    render();
+                    $("person-add-toggle").focus();
+                }
             };
             $("calendar-add-cancel").onclick = () => {
                 calendarFormOpen = false;
@@ -2321,13 +2370,7 @@
             };
             $("calendar-add-save").onclick = saveCalendar;
             updateCalendarAddButton();
-            $("person-add-toggle").onclick = () => {
-                personFormOpen = true;
-                setTab = "people";
-                $("person-status").textContent = "";
-                render();
-                $("person-name").focus();
-            };
+            $("person-add-toggle").onclick = () => openPersonForm();
             $("person-add-cancel").onclick = () => {
                 resetPersonForm();
                 render();
@@ -2338,6 +2381,7 @@
             $("person-image").onchange = async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
+                const previousImage = addPersonImage;
                 $("person-status").textContent = "Preparing avatar…";
                 try {
                     addPersonImage = await encodeAvatar(file);
@@ -2345,7 +2389,8 @@
                     renderPersonAvatarChoices();
                     renderPersonPreview();
                 } catch (error) {
-                    addPersonImage = null;
+                    addPersonImage = previousImage;
+                    event.target.value = "";
                     $("person-status").textContent = error.message;
                 }
             };
