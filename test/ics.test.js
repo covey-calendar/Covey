@@ -58,6 +58,7 @@ test('exposes event descriptions as notes for person matching', () => {
     'DTSTAMP:20260930T120000Z',
     'SUMMARY:School pickup',
     "DESCRIPTION:Ask Stan's sister about pickup",
+    'LOCATION:School parking lot',
     'DTSTART;VALUE=DATE:20260930',
     'DTEND;VALUE=DATE:20261001',
     'END:VEVENT',
@@ -67,4 +68,5 @@ test('exposes event descriptions as notes for person matching', () => {
 
   const event = parseOne(data);
   assert.equal(event.notes, "Ask Stan's sister about pickup");
+  assert.equal(event.location, 'School parking lot');
 });

@@ -354,6 +354,32 @@
         </div>
 
         <div
+            id="event-detail"
+            class="hidden fixed inset-0 z-30 bg-black/50 items-center justify-center p-4"
+            style="
+                padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+            "
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="event-detail-title"
+                class="bg-card border border-line rounded-2xl p-4 w-full max-w-md max-h-full flex flex-col"
+            >
+                <div class="flex items-center justify-between gap-3 mb-3 shrink-0">
+                    <h2 id="event-detail-title" class="text-lg font-semibold truncate"></h2>
+                    <button
+                        id="event-detail-close"
+                        class="w-9 h-9 grid place-items-center text-mute shrink-0"
+                        aria-label="Close event details"
+                    ><i data-i="x"></i></button>
+                </div>
+                <div id="event-detail-content" class="min-h-0 overflow-y-auto"></div>
+            </section>
+        </div>
+
+        <div
             id="settings"
             class="hidden fixed inset-0 z-20 bg-black/50 items-center justify-center p-4"
             style="

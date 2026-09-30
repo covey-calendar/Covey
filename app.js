@@ -308,6 +308,8 @@
                 wstart = home(),
                 cur = new Date(),
                 sheet = false,
+                detailEvent = null,
+                detailReturnFocus = null,
                 setOpen = false,
                 setTab = "calendars";
             cur.setDate(1);
@@ -707,21 +709,59 @@
                 sheet = false;
                 render();
             }
+            function openEventDetails(event) {
+                detailReturnFocus = document.activeElement;
+                detailEvent = event;
+                render();
+                $("event-detail-close").focus();
+            }
+            function closeEventDetails() {
+                detailEvent = null;
+                render();
+                const returnFocus = detailReturnFocus?.isConnected
+                    ? detailReturnFocus
+                    : sheet
+                      ? $("close")
+                      : $("addbtn");
+                returnFocus?.focus();
+                detailReturnFocus = null;
+            }
+            function activateEventNode(node, event) {
+                if (node.tagName !== "BUTTON") {
+                    node.setAttribute("role", "button");
+                    node.tabIndex = 0;
+                    node.onkeydown = (keyEvent) => {
+                        if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
+                        keyEvent.preventDefault();
+                        keyEvent.stopPropagation();
+                        openEventDetails(event);
+                    };
+                }
+                node.onclick = (clickEvent) => {
+                    clickEvent.stopPropagation();
+                    openEventDetails(event);
+                };
+            }
             // Month, week, and list views share one event model; each has a
             // separate layout path suited to its calendar presentation.
             function monthCell(k, num, list, max, td) {
                 const c = el(
+                    "div",
+                    "bg-card text-left p-1.5 flex flex-col gap-1 overflow-hidden min-h-0 cursor-pointer",
+                );
+                const dayButton = el(
                     "button",
-                    "bg-card text-left p-1.5 flex flex-col gap-1 overflow-hidden min-h-0",
+                    "text-sm lg:text-base font-semibold w-7 h-7 grid place-items-center rounded-full shrink-0 " +
+                        (k === td ? "bg-accent text-on" : ""),
+                    num,
                 );
-                c.append(
-                    el(
-                        "span",
-                        "text-sm lg:text-base font-semibold w-7 h-7 grid place-items-center rounded-full shrink-0 " +
-                            (k === td ? "bg-accent text-on" : ""),
-                        num,
-                    ),
-                );
+                dayButton.type = "button";
+                dayButton.setAttribute("aria-label", "Open events for " + k);
+                dayButton.onclick = (clickEvent) => {
+                    clickEvent.stopPropagation();
+                    openSheet(k);
+                };
+                c.append(dayButton);
                 list.slice(0, max).forEach((e) => {
                     const m = sty(e),
                         p = el(
@@ -732,7 +772,9 @@
                         );
                     p.style.background = m.c;
                     p.style.color = INK;
-                    c.append(tag(p, e));
+                    const eventTag = tag(p, e);
+                    activateEventNode(eventTag, e);
+                    c.append(eventTag);
                 });
                 if (list.length > max)
                     c.append(
@@ -760,7 +802,7 @@
             let nowIdleTimer = null,
                 suppressScrollEvents = false;
             function goToNow() {
-                if (sheet || setOpen) {
+                if (sheet || detailEvent || setOpen) {
                     armIdleReset();
                     return;
                 } // don't yank the view while a sheet/modal is open; just keep checking
@@ -783,7 +825,7 @@
                 document.body.classList.remove("chrome-idle");
                 clearTimeout(chromeIdleTimer);
                 chromeIdleTimer = setTimeout(() => {
-                    if (!sheet && !setOpen)
+                    if (!sheet && !detailEvent && !setOpen)
                         document.body.classList.add("chrome-idle");
                 }, CHROME_IDLE_MS);
             }
@@ -944,7 +986,7 @@
                                     eventDisplayTitle(event),
                             );
                             card.append(time, title);
-                            card.onclick = () => openSheet(k);
+                            activateEventNode(card, event);
                             section.append(card);
                         });
                     }
@@ -1058,7 +1100,9 @@
                                 );
                             p.style.background = m.c;
                             p.style.color = INK;
-                            c.append(tag(p, e));
+                            const eventTag = tag(p, e);
+                            activateEventNode(eventTag, e);
+                            c.append(eventTag);
                         });
                         c.onclick = () => openSheet(keys[i]);
                         ar.append(c);
@@ -1183,6 +1227,7 @@
                                     e,
                                 ),
                             );
+                        activateEventNode(p, e);
                         c.append(p);
                     });
                     if (
@@ -1212,6 +1257,47 @@
                 requestAnimationFrame(() => {
                     suppressScrollEvents = false;
                 });
+            }
+            function renderEventDetails(event) {
+                $("event-detail-title").textContent = event.t || "(no title)";
+                const content = $("event-detail-content");
+                content.innerHTML = "";
+                const addRow = (label, value, valueClass = "") => {
+                    const row = el("section", "py-3 border-b border-line last:border-b-0");
+                    row.append(
+                        el("h3", "text-xs font-semibold uppercase tracking-wide text-mute", label),
+                        el("p", "mt-1 text-sm text-ink break-words " + valueClass, value),
+                    );
+                    content.append(row);
+                };
+                const when = parse(event.d).toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                });
+                addRow("When", when + " · " + (event.tm ? trange(event) : "All day"));
+                const calendar = calendarForEvent(event);
+                addRow("Calendar", calendar?.name || event.calendarName || sty(event).n);
+                if (event.location) addRow("Location", event.location);
+                const assignedPeople = peopleForEvent(event);
+                if (assignedPeople.length) {
+                    const row = el("section", "py-3 border-b border-line last:border-b-0");
+                    row.append(el("h3", "text-xs font-semibold uppercase tracking-wide text-mute", "People"));
+                    const list = el("div", "mt-2 flex flex-wrap gap-2");
+                    assignedPeople.forEach((person) => {
+                        const chip = el("div", "inline-flex items-center gap-2 rounded-full border border-line bg-bg py-1 pl-1 pr-3");
+                        chip.append(avatarNode(person, 28), el("span", "text-sm", person.name));
+                        list.append(chip);
+                    });
+                    row.append(list);
+                    content.append(row);
+                } else {
+                    addRow("People", eventMemberName(event));
+                }
+                if (event.notes)
+                    addRow("Notes / description", event.notes, "whitespace-pre-wrap");
+                if (event.rec) addRow("Repeats", "This is part of a repeating event.");
             }
             function render() {
                 const td = iso(new Date()),
@@ -1339,6 +1425,9 @@
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
                 $("sheet").classList.toggle("flex", sheet);
+                $("event-detail").classList.toggle("hidden", !detailEvent);
+                $("event-detail").classList.toggle("flex", !!detailEvent);
+                if (detailEvent) renderEventDetails(detailEvent);
                 if (!sheet) return;
                 formKind();
                 $("sd").textContent = parse(sel).toLocaleDateString(undefined, {
@@ -1362,8 +1451,16 @@
                         b = el("span", "w-1 self-stretch rounded-sm");
                     b.style.background = m.d;
                     const t = el("div", "flex-1 min-w-0 flex flex-col");
+                    const titleButton = el(
+                        "button",
+                        "w-full text-left truncate text-sm font-semibold",
+                        eventDisplayTitle(e),
+                    );
+                    titleButton.type = "button";
+                    const titleTag = tag(titleButton, e);
+                    activateEventNode(titleTag, e);
                     t.append(
-                        tag(el("strong", "truncate", eventDisplayTitle(e)), e),
+                        titleTag,
                         el(
                             "small",
                             "text-mute",
@@ -2262,9 +2359,15 @@
             $("sheet").onclick = (e) => {
                 if (e.target === $("sheet")) closeSheet();
             };
+            $("event-detail-close").onclick = closeEventDetails;
+            $("event-detail").onclick = (e) => {
+                if (e.target === $("event-detail")) closeEventDetails();
+            };
             document.addEventListener("keydown", (e) => {
                 if (e.key !== "Escape") return;
-                if (setOpen) {
+                if (detailEvent) {
+                    closeEventDetails();
+                } else if (setOpen) {
                     if (setTab === "calendars" && calendarFormOpen) {
                         calendarFormOpen = false;
                         render();

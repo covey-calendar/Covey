@@ -73,6 +73,7 @@ export function parseEvents(obj, from, to) {
         url: obj.url,
         etag: obj.etag,
         t: ev.summary || '(no title)',
+        location: String(vevent.getFirstPropertyValue('location') || ''),
         notes: String(vevent.getFirstPropertyValue('description') || ''),
         m: categories[0] || '',
         members: categories,
