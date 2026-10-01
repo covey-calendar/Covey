@@ -9,7 +9,7 @@ const esc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/
 export const isoDate = d => iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
 
 // Build a single-event .ics. Times are "floating" (same wall-clock time on every device).
-export function buildICS({ uid, title, date, time, endTime, member, alarm }) {
+export function buildICS({ uid, title, date, time, endTime, member, members, personId, personIds, alarm }) {
   const [y, mo, da] = date.split('-').map(Number);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   let when;
@@ -24,10 +24,13 @@ export function buildICS({ uid, title, date, time, endTime, member, alarm }) {
   } else {
     when = [`DTSTART;VALUE=DATE:${ymd(new Date(y, mo - 1, da))}`, `DTEND;VALUE=DATE:${ymd(new Date(y, mo - 1, da + 1))}`];
   }
+  const assignedIds = Array.isArray(personIds) ? personIds : personId ? [personId] : [];
+  const categoryNames = Array.isArray(members) ? members : member ? [member] : [];
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gaggle//Family Calendar//EN', 'BEGIN:VEVENT',
     `UID:${uid}`, `DTSTAMP:${stamp}`, `SUMMARY:${esc(title)}`,
-    ...(member ? [`CATEGORIES:${esc(member)}`] : []),
+    ...(categoryNames.length ? [`CATEGORIES:${categoryNames.map(esc).join(',')}`] : []),
+    ...(assignedIds.length ? [`X-COVEY-PERSON-ID:${esc(assignedIds[0])}`, `X-COVEY-PERSON-IDS:${assignedIds.join('|')}`] : []),
     ...when,
     ...(alarm ? ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', `TRIGGER:${time ? 'PT0S' : 'PT9H'}`, 'END:VALARM'] : []),
     'END:VEVENT', 'END:VCALENDAR',
@@ -57,7 +60,26 @@ export function parseEvents(obj, from, to) {
     try {
       const ev = new ICAL.Event(vevent);
       if (ev.isRecurrenceException()) continue;
-      const base = { id: obj.url, url: obj.url, etag: obj.etag, t: ev.summary || '(no title)', m: String(vevent.getFirstPropertyValue('categories') || '') };
+      const categories = vevent
+        .getFirstProperty('categories')
+        ?.getValues()
+        .map(String) || [];
+      const legacyPersonId = String(vevent.getFirstPropertyValue('x-covey-person-id') || '');
+      const storedPersonIds = String(vevent.getFirstPropertyValue('x-covey-person-ids') || '')
+        .split('|')
+        .filter(Boolean);
+      const base = {
+        id: obj.url,
+        url: obj.url,
+        etag: obj.etag,
+        t: ev.summary || '(no title)',
+        location: String(vevent.getFirstPropertyValue('location') || ''),
+        notes: String(vevent.getFirstPropertyValue('description') || ''),
+        m: categories[0] || '',
+        members: categories,
+        personId: legacyPersonId,
+        personIds: storedPersonIds.length ? storedPersonIds : legacyPersonId ? [legacyPersonId] : [],
+      };
       if (ev.isRecurring()) {
         const it = ev.iterator();
         for (let n, i = 0; (n = it.next()) && i < 1000; i++) {

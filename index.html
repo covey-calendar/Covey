@@ -58,54 +58,29 @@
                 },
             };
         </script>
+
         <link rel="stylesheet" href="style.css" />
     </head>
     <body class="bg-bg text-ink">
         <div
             id="splash"
-            class="fixed inset-0 z-[999] flex flex-col items-center justify-center gap-5 bg-accent"
+            class="fixed inset-0 z-[999] flex items-center justify-center bg-[#f4efe8]"
             aria-hidden="true"
         >
-            <svg
-                width="104"
-                height="104"
-                viewBox="0 0 512 512"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="18"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="text-on splash-flock"
-            >
-                <path
-                    d="M96 336 C136 276 176 276 216 316 C256 276 296 276 336 336"
-                    class="splash-bird"
-                    style="--op: 0.55; animation-delay: 0.05s"
+            <div class="flex flex-col items-center gap-6">
+                <img
+                    src="Logo.svg"
+                    alt="Covey"
+                    width="310"
+                    height="82"
+                    class="h-auto w-72 max-w-[80vw]"
                 />
-                <path
-                    d="M136 256 C176 196 216 196 256 236 C296 196 336 196 376 256"
-                    class="splash-bird"
-                    style="--op: 0.8; animation-delay: 0.2s"
-                />
-                <path
-                    d="M176 176 C216 116 256 116 296 156 C336 116 376 116 416 176"
-                    class="splash-bird"
-                    style="--op: 1; animation-delay: 0.35s"
-                />
-            </svg>
-            <div
-                class="text-on text-3xl font-medium splash-word"
-            >
-                Covey
-            </div>
-            <div class="w-24 h-1 rounded-full overflow-hidden">
-                <div
-                    class="h-full w-1/3 rounded-full text-on splash-bar"
-                    style="background: currentColor"
-                ></div>
+                <div class="splash-loader" role="status" aria-label="Loading">
+                    <span></span>
+                </div>
             </div>
         </div>
-        <div class="h-full flex flex-col p-3 pt-2">
+        <div id="app-shell" class="h-full flex flex-col p-3 pt-2">
             <section class="flex-1 min-w-0 min-h-0 flex flex-col">
                 <header
                     class="flex items-center gap-2 mb-2 flex-wrap landscape:grid landscape:grid-cols-[1fr_auto_1fr]"
@@ -156,19 +131,39 @@
                         class="ml-auto flex items-center gap-2 justify-self-end idle-fade"
                     >
                         <div
+                            role="group"
+                            aria-label="Calendar view"
                             class="flex rounded-full border border-line bg-card p-0.5"
                         >
                             <button
                                 id="vm"
-                                class="h-9 px-4 rounded-full text-sm font-medium"
+                                aria-label="Month view"
+                                title="Month view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
                             >
-                                Month
+                                <i data-i="calendar-days" data-s="18"></i>
+                                <span class="sr-only">Month</span>
                             </button>
                             <button
                                 id="vw"
-                                class="h-9 px-4 rounded-full text-sm font-medium"
+                                aria-label="Week view"
+                                title="Week view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
                             >
-                                Week
+                                <i data-i="columns-3" data-s="18"></i>
+                                <span class="sr-only">Week</span>
+                            </button>
+                            <button
+                                id="vl"
+                                aria-label="List view"
+                                title="List view"
+                                aria-pressed="false"
+                                class="h-9 w-9 grid place-items-center rounded-full"
+                            >
+                                <i data-i="list" data-s="18"></i>
+                                <span class="sr-only">List</span>
                             </button>
                         </div>
                         <button
@@ -216,7 +211,14 @@
                         class="flex-1 min-h-0 overflow-y-auto"
                         style="
                             display: none;
-                            padding-bottom: 4.5rem;
+                            overscroll-behavior: contain;
+                        "
+                    ></div>
+                    <div
+                        id="listview"
+                        class="flex-1 min-h-0 overflow-y-auto"
+                        style="
+                            display: none;
                             overscroll-behavior: contain;
                         "
                     ></div>
@@ -224,6 +226,13 @@
                 <p class="status text-xs text-accent mt-1"></p>
             </section>
         </div>
+
+        <div
+            id="today-overlay"
+            class="hidden fixed inset-0 z-[60] overflow-y-auto bg-bg"
+            aria-hidden="true"
+            tabindex="-1"
+        ></div>
 
         <button
             id="addbtn"
@@ -299,10 +308,18 @@
                             aria-label="End time"
                             class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
                     /></label>
-                    <select
-                        id="who"
-                        class="bg-bg border border-line rounded-lg p-2 min-w-0"
-                    ></select>
+                    <div
+                        id="who-wrap"
+                        class="hidden col-span-2 text-xs text-mute"
+                    >
+                        <span>People</span>
+                        <div
+                            id="who-options"
+                            class="mt-1 flex flex-wrap gap-2"
+                            role="group"
+                            aria-label="People for this event"
+                        ></div>
+                    </div>
                     <button
                         id="go"
                         aria-busy="false"
@@ -340,6 +357,32 @@
                 </div>
                 <p class="status text-xs text-accent mt-2 min-h-4"></p>
             </div>
+        </div>
+
+        <div
+            id="event-detail"
+            class="hidden fixed inset-0 z-30 bg-black/50 items-center justify-center p-4"
+            style="
+                padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+            "
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="event-detail-title"
+                class="bg-card border border-line rounded-2xl p-4 w-full max-w-md max-h-full flex flex-col"
+            >
+                <div class="flex items-center justify-between gap-3 mb-3 shrink-0">
+                    <h2 id="event-detail-title" class="text-lg font-semibold truncate"></h2>
+                    <button
+                        id="event-detail-close"
+                        class="w-9 h-9 grid place-items-center text-mute shrink-0"
+                        aria-label="Close event details"
+                    ><i data-i="x"></i></button>
+                </div>
+                <div id="event-detail-content" class="min-h-0 overflow-y-auto"></div>
+            </section>
         </div>
 
         <div
@@ -394,11 +437,78 @@
                                     Add calendar
                                 </button>
                             </div>
-                            <div id="peoplewrap" class="mt-2" style="display: none">
+
+                            <div id="peoplewrap" class="mt-4 border-t border-line pt-4" style="display: none">
                                 <p class="text-xs text-mute mb-1.5">
-                                    Show family events for
+                                    Filter events by person
                                 </p>
-                                <div id="people" class="flex flex-wrap gap-2"></div>
+                                <div
+                                    id="people"
+                                    role="group"
+                                    aria-label="Filter calendar by person"
+                                    class="flex flex-wrap gap-2"
+                                ></div>
+                            </div>
+                        </section>
+                    </div>
+                    <div id="tab-people">
+                        <section id="people-admin">
+                            <div id="person-main-view">
+                                <div class="flex items-center justify-between gap-3">
+                                    <h3 class="text-sm font-semibold">People</h3>
+                                    <button
+                                        id="person-add-toggle"
+                                        type="button"
+                                        class="inline-flex items-center gap-1 text-sm font-semibold text-accent"
+                                    ><i data-i="plus" data-s="16"></i>Add person</button>
+                                </div>
+                                <div id="person-cards" class="mt-2 flex flex-col"></div>
+                                <p id="person-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
+                            </div>
+                            <div id="person-form" class="hidden space-y-3">
+                                <label class="block text-sm font-medium" for="person-name">
+                                    Name
+                                    <input
+                                        id="person-name"
+                                        maxlength="60"
+                                        autocomplete="off"
+                                        class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
+                                        placeholder="e.g. Stan"
+                                    />
+                                </label>
+                                <fieldset class="space-y-2">
+                                    <legend class="text-sm font-medium">Associated calendars</legend>
+                                    <p class="text-xs text-mute">Select every event calendar this person belongs to.</p>
+                                    <div id="person-calendar-choices" class="grid grid-cols-1 gap-2 sm:grid-cols-2"></div>
+                                </fieldset>
+                                <div>
+                                    <p class="mb-2 text-sm font-medium">Choose an avatar</p>
+                                    <div id="person-avatar-choices" class="grid grid-cols-4 gap-2 mb-2"></div>
+                                    <div id="person-bird-choices" class="grid grid-cols-4 gap-2"></div>
+                                </div>
+                                <label class="block text-sm font-medium" for="person-image">
+                                    Or upload a custom avatar
+                                    <input
+                                        id="person-image"
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        class="mt-1 block w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-bg file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
+                                    />
+                                </label>
+                                <div id="person-avatar-preview" class="flex items-center gap-2 text-xs text-mute"></div>
+                                <div class="flex gap-2">
+                                    <button
+                                        id="person-add-cancel"
+                                        type="button"
+                                        class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
+                                    >Cancel</button>
+                                    <button
+                                        id="person-add-save"
+                                        type="button"
+                                        class="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-on disabled:cursor-not-allowed disabled:opacity-50"
+                                    >Save person</button>
+                                </div>
+                                <p id="person-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                             </div>
                         </section>
                     </div>
@@ -470,16 +580,48 @@
                             Compact shows 8 AM–8 PM. The day header marks events outside those hours.
                         </p>
                         <p class="text-sm font-medium mb-2">
-                            Days shown in week view
+                            Days shown in week and list views
                         </p>
                         <div
                             id="daybtns"
+                            role="group"
+                            aria-label="Days shown in week and list views"
                             class="grid grid-cols-7 gap-1.5"
                         ></div>
                         <p class="text-xs text-mute mt-2">
-                            Fewer days means bigger events. Anything under 7
-                            starts from today; 7 shows Sunday to Saturday.
+                            Anything under 7 starts from today; 7 shows Sunday
+                            to Saturday.
                         </p>
+                    </div>
+                    <div id="tab-today">
+                        <label class="flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">
+                            <span>
+                                <span class="block text-sm font-medium">Automatic Today view</span>
+                                <span class="mt-1 block text-xs text-mute">A full-screen daily briefing appears once each window: 6:00–9:00 AM and 4:00–6:00 PM.</span>
+                            </span>
+                            <input id="today-enabled" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                        </label>
+                        <p class="mt-3 text-xs text-mute">Dismiss a briefing to hide it for the rest of that window.</p>
+                        <section class="mt-6 border-t border-line pt-5">
+                            <label class="flex items-start justify-between gap-4">
+                                <span>
+                                    <span class="block text-sm font-medium">Show local weather</span>
+                                    <span class="mt-1 block text-xs text-mute">On by default. The forecast appears after you set a location below.</span>
+                                </span>
+                                <input id="today-weather-enabled" type="checkbox" checked class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                            </label>
+                            <label for="today-temperature-unit" class="mt-4 block text-sm font-medium">Temperature unit</label>
+                            <select id="today-temperature-unit" class="mt-1 w-full max-w-xs rounded-lg border border-line bg-bg p-2 text-sm text-ink">
+                                <option value="F">Fahrenheit (°F)</option>
+                                <option value="C">Celsius (°C)</option>
+                            </select>
+                            <label for="today-weather-location" class="mt-4 block text-sm font-medium">Weather location</label>
+                            <input id="today-weather-location" type="text" maxlength="100" autocomplete="address-level2" placeholder="City or postal code" class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink" />
+                            <p class="mt-2 text-xs text-mute">Your location is saved in this browser and sent to Open-Meteo to find the forecast. Covey does not save your coordinates.</p>
+                            <button id="today-weather-location-save" type="button" class="mt-3 rounded-full border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed">Save location</button>
+                            <p id="today-weather-location-status" role="status" aria-live="polite" class="mt-2 min-h-4 text-xs text-mute"></p>
+                        </section>
+                        <button id="today-preview" type="button" class="mt-4 w-full rounded-lg border border-line py-2 text-sm font-semibold">Preview Today view</button>
                     </div>
                     <div id="tab-appearance">
                         <p class="text-sm font-medium mb-2">Text size</p>
@@ -579,5 +721,7 @@
             </div>
         </div>
 
+
         <script src="app.js"></script>
+    </body>
 </html>

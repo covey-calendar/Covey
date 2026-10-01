@@ -11,6 +11,8 @@ import {
   loadCalendarStore,
   saveCalendarStore,
 } from './calendar-store.js';
+import { isValidPersonImage, loadPeopleStore, savePeopleStore } from './people-store.js';
+
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const {
@@ -29,15 +31,28 @@ if (!ICLOUD_EMAIL || !ICLOUD_APP_PASSWORD) {
 
 const dataDir = COVEY_DATA_DIR ? path.resolve(COVEY_DATA_DIR) : path.join(here, 'data');
 const calendarStorePath = path.join(dataDir, 'calendars.json');
+const peopleStorePath = path.join(dataDir, 'people.json');
 let calendars;
+let people;
+
+console.log('A: env ok, loading calendars from', calendarStorePath);
 try {
   calendars = loadCalendarStore(calendarStorePath, {
     CALENDAR_NAME,
     REMINDERS_CALENDAR,
     DINNER_CALENDAR,
   });
+  console.log('B: calendars loaded');
+
 } catch (error) {
   console.error(`Unable to load calendar configuration: ${error.message}`);
+  process.exit(1);
+}
+try {
+  people = loadPeopleStore(peopleStorePath);
+  console.log('C: people loaded');
+} catch (error) {
+  console.error(`Unable to load people configuration: ${error.message}`);
   process.exit(1);
 }
 let KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
@@ -97,7 +112,7 @@ function startStatusLine(url) {
 
 const app = express();
 app.use((_req, _res, next) => { reqCount++; next(); });
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => {
   const page = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
   res.type('html').send(page.replace('<!--SERVER-->', '<script>window.GAGGLE_SERVER = true</script>'));
@@ -112,11 +127,120 @@ const publicCalendars = () => calendars.map(({ id, name, type, color, icon }) =>
   ...(color ? { color } : {}),
   ...(icon ? { icon } : {}),
 }));
+const publicPeople = () => people;
+const validPersonCalendarIds = (calendarIds) =>
+  Array.isArray(calendarIds) &&
+  calendarIds.length <= calendars.length &&
+  new Set(calendarIds).size === calendarIds.length &&
+  calendarIds.every((id) =>
+    typeof id === 'string' && calendars.some((calendar) => calendar.id === id && calendar.type === 'event'),
+  );
 
 app.get('/api/config', (_req, res) => res.json({
   kinds: KINDS,
   calendars: publicCalendars(),
+  people: publicPeople(),
 }));
+app.get('/api/config/people', (_req, res) => res.json({ people: publicPeople() }));
+
+app.post('/api/config/people', (req, res) => {
+  const { name, avatar = 'person', image = null, calendarIds = [] } = req.body || {};
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (!trimmedName || trimmedName.length > 60) {
+    return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
+  }
+  if (trimmedName.toLocaleLowerCase() === 'family') {
+    return res.status(400).json({ error: '“Family” is reserved for shared family events.' });
+  }
+  if (people.some((person) => person.name.toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) {
+    return res.status(409).json({ error: `A person named “${trimmedName}” already exists.` });
+  }
+  if (!['person', 'child', 'baby', 'bird'].includes(avatar)) {
+    return res.status(400).json({ error: 'Choose one of the available basic avatars.' });
+  }
+  if (!isValidPersonImage(image)) {
+    return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
+  }
+  if (!validPersonCalendarIds(calendarIds)) {
+    return res.status(400).json({ error: 'Choose valid event calendars for this person.' });
+  }
+
+  const baseId = trimmedName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50) || 'person';
+  let id = baseId;
+  let suffix = 2;
+  while (people.some((person) => person.id === id)) {
+    id = `${baseId}-${suffix++}`;
+  }
+  try {
+    people = savePeopleStore(peopleStorePath, [...people, { id, name: trimmedName, avatar, image, calendarIds }]);
+    res.status(201).json({ people: publicPeople(), person: people.find((person) => person.id === id) });
+  } catch (error) {
+    console.error('Unable to save person:', error);
+    res.status(500).json({ error: `Could not save person: ${error.message}` });
+  }
+});
+
+app.put('/api/config/people/:id', (req, res) => {
+  const person = people.find((entry) => entry.id === req.params.id);
+  if (!person) {
+    return res.status(404).json({ error: 'Person not found.' });
+  }
+
+  const {
+    name,
+    avatar = person.avatar,
+    image = person.image,
+    calendarIds = person.calendarIds,
+  } = req.body || {};
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (!trimmedName || trimmedName.length > 60) {
+    return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
+  }
+  if (trimmedName.toLocaleLowerCase() === 'family') {
+    return res.status(400).json({ error: '“Family” is reserved for shared family events.' });
+  }
+  if (people.some((entry) => entry.id !== person.id && entry.name.toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) {
+    return res.status(409).json({ error: `A person named “${trimmedName}” already exists.` });
+  }
+  if (!['person', 'child', 'baby', 'bird'].includes(avatar)) {
+    return res.status(400).json({ error: 'Choose one of the available basic avatars.' });
+  }
+  if (!isValidPersonImage(image)) {
+    return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
+  }
+  if (!validPersonCalendarIds(calendarIds)) {
+    return res.status(400).json({ error: 'Choose valid event calendars for this person.' });
+  }
+
+  try {
+    people = savePeopleStore(peopleStorePath, people.map((entry) =>
+      entry.id === person.id ? { ...entry, name: trimmedName, avatar, image, calendarIds } : entry,
+    ));
+    res.json({ people: publicPeople(), person: people.find((entry) => entry.id === person.id) });
+  } catch (error) {
+    console.error('Unable to update person:', error);
+    res.status(500).json({ error: `Could not update person: ${error.message}` });
+  }
+});
+
+app.delete('/api/config/people/:id', (req, res) => {
+  const { id } = req.params;
+  if (!people.some((person) => person.id === id)) {
+    return res.status(404).json({ error: 'Person not found.' });
+  }
+  try {
+    people = savePeopleStore(peopleStorePath, people.filter((person) => person.id !== id));
+    res.json({ people: publicPeople() });
+  } catch (error) {
+    res.status(500).json({ error: `Could not remove person: ${error.message}` });
+  }
+});
 
 app.post('/api/config/calendars', async (req, res) => {
   const { name, color, icon, confirmedExisting } = req.body || {};
@@ -187,13 +311,40 @@ app.delete('/api/config/calendars/:id', (req, res) => {
   }
 
   try {
-    calendars = saveCalendarStore(
-      calendarStorePath,
-      calendars.filter((calendar) => calendar.id !== id),
-    );
+    const previousPeople = people;
+    const previousCalendars = calendars;
+    try {
+      people = savePeopleStore(
+        peopleStorePath,
+        people.map((person) => ({
+          ...person,
+          calendarIds: person.calendarIds.filter((calendarId) => calendarId !== id),
+        })),
+      );
+      calendars = saveCalendarStore(
+        calendarStorePath,
+        calendars.filter((calendar) => calendar.id !== id),
+      );
+    } catch (error) {
+      if (people !== previousPeople) {
+        try {
+          people = savePeopleStore(peopleStorePath, previousPeople);
+        } catch (rollbackError) {
+          console.error('Unable to restore people after calendar removal failed:', rollbackError);
+        }
+      }
+      if (calendars !== previousCalendars) {
+        try {
+          calendars = saveCalendarStore(calendarStorePath, previousCalendars);
+        } catch (rollbackError) {
+          console.error('Unable to restore calendars after removal failed:', rollbackError);
+        }
+      }
+      throw error;
+    }
     KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
     ctx = null;
-    res.json({ kinds: KINDS, calendars: publicCalendars() });
+    res.json({ kinds: KINDS, calendars: publicCalendars(), people: publicPeople() });
   } catch (error) {
     console.error('Unable to remove calendar:', error);
     res.status(500).json({ error: `Could not remove calendar: ${error.message}` });
@@ -233,13 +384,23 @@ app.get('/api/events', wrap(async (req, res) => {
 }));
 
 app.post('/api/events', wrap(async (req, res) => {
-  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId } = req.body || {};
+  const { t, d, tm = '', te = '', m = 'Family', kind = 'event', calendarId, personId, personIds } = req.body || {};
   const validTime = value => /^(\d{2}:\d{2})?$/.test(value);
   if (typeof t !== 'string' || !t.trim() || t.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(d) ||
       !validTime(tm) || !validTime(te) || (te && (!tm || te <= tm)) ||
-      typeof m !== 'string' || m.length > 40 || typeof kind !== 'string' ||
-      (calendarId !== undefined && typeof calendarId !== 'string')) {
+      typeof m !== 'string' || m.length > 60 || typeof kind !== 'string' ||
+      (calendarId !== undefined && typeof calendarId !== 'string') ||
+      (personId !== undefined && typeof personId !== 'string') ||
+      (personIds !== undefined && (!Array.isArray(personIds) || personIds.length > 100 || personIds.some((id) => typeof id !== 'string')))) {
     return res.status(400).json({ error: 'Invalid event' });
+  }
+  const requestedPersonIds = personIds ?? (personId ? [personId] : []);
+  if (new Set(requestedPersonIds).size !== requestedPersonIds.length) {
+    return res.status(400).json({ error: 'Choose each person only once.' });
+  }
+  const assignedPeople = requestedPersonIds.map((id) => people.find((candidate) => candidate.id === id));
+  if (assignedPeople.some((person) => !person) || (assignedPeople.length && kind !== 'event')) {
+    return res.status(400).json({ error: 'Choose valid people for this event.' });
   }
   const { client, cals } = await connect();
   const target = calendarId
@@ -254,7 +415,12 @@ app.post('/api/events', wrap(async (req, res) => {
       uid, title: t.trim(), date: d,
       time: kind === 'event' ? tm : '',        // reminders and dinner are all-day entries
       endTime: kind === 'event' ? te : '',     // optional; defaults to one hour after start
-      member: kind === 'event' ? m : '',        // people tags only on the shared calendar
+      member: kind === 'event' ? (assignedPeople[0]?.name || m) : '',
+      members: kind === 'event'
+        ? (assignedPeople.length ? assignedPeople.map((person) => person.name) : [m])
+        : [],
+      personId: kind === 'event' ? assignedPeople[0]?.id : '',
+      personIds: kind === 'event' ? assignedPeople.map((person) => person.id) : [],
       alarm: kind === 'reminder',               // reminders alert on the phone
     }),
   });

@@ -52,27 +52,23 @@ via npm:
 
 ## Configuration
 
-Copy the sample configuration file to `.env`:
+After installing dependencies, run the setup wizard:
 
 ```sh
-cp .env_sample .env
+npm run setup
 ```
 
-Then open `.env` and set the required credentials:
+The wizard asks for your Apple ID email, an app-specific password (the input is masked), and the name of an existing iCloud calendar for events. Reminders and dinner calendars are optional. It saves the credentials to `.env` with owner-only file permissions. Use an app-specific password, not your normal Apple ID password; create one at [account.apple.com](https://account.apple.com/).
 
-```dotenv
-ICLOUD_EMAIL=you@example.com
-ICLOUD_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-PORT=3000
-```
+You can also run `npm start` without configuring credentials first. Covey detects missing iCloud credentials, launches the setup wizard in the terminal, and starts the server after setup completes. If `.env` already exists, the wizard asks before updating iCloud settings and preserves unrelated entries. To configure Covey without an interactive terminal, copy `.env_sample` to `.env` and edit it manually. Never commit `.env` or share your app-specific password.
 
-The server creates `data/calendars.json` on first launch. It contains calendar IDs, iCloud calendar names, and types (`event`, `reminder`, or `dinner`). The first launch imports legacy `CALENDAR_NAME`, `REMINDERS_CALENDAR`, and `DINNER_CALENDAR` values from `.env` if present; after that, the JSON file is the source of calendar configuration. The generated `data/` directory is ignored by Git so each installation keeps its own settings.
+Calendar names entered during setup must match calendars that already exist in iCloud. The event calendar defaults to `Family`; confirm or change it to match your account. Covey creates `data/calendars.json` on first launch. It contains calendar IDs, iCloud calendar names, and types (`event`, `reminder`, or `dinner`). Legacy `CALENDAR_NAME`, `REMINDERS_CALENDAR`, and `DINNER_CALENDAR` values in `.env` seed this file only on first launch. The generated `data/` directory is ignored by Git so each installation keeps its own settings.
 
 The Calendars tab lets you add calendars by name, choose from eight preset colors and icons, and confirm the calendar already exists in iCloud. Covey also checks the name with iCloud before saving. Calendar records are persisted in `data/calendars.json`; direct file edits require a server restart. The config API's `PUT /api/config/calendars` replaces the full list, so include every calendar you want to keep. Calendar names must match existing iCloud calendars (case-insensitive). To store the file somewhere else, set `COVEY_DATA_DIR` to a writable directory. Never commit `.env` or share your app-specific password.
 
 ## Running locally
 
-Install dependencies and start the server:
+Install dependencies and start the server. On first launch, `npm start` opens setup if iCloud credentials are missing:
 
 ```sh
 npm install
