@@ -33,6 +33,22 @@ function normalizePeople(people) {
     const name = typeof person.name === 'string' ? person.name.trim() : '';
     const avatar = typeof person.avatar === 'string' ? person.avatar : 'person';
     const image = person.image == null ? null : person.image;
+    const calendarIds = person.calendarIds === undefined
+      ? (typeof person.calendarId === 'string' && person.calendarId ? [person.calendarId] : [])
+      : person.calendarIds;
+
+    if (!Array.isArray(calendarIds)) {
+      throw new Error(`Person "${id || '(empty)'}" must have a valid calendarIds array.`);
+    }
+    const normalizedCalendarIds = calendarIds.map((calendarId) =>
+      typeof calendarId === 'string' ? calendarId.trim() : '',
+    );
+    if (normalizedCalendarIds.some((calendarId) => !/^[a-z0-9][a-z0-9-]{0,63}$/.test(calendarId))) {
+      throw new Error(`Person "${id || '(empty)'}" has an invalid calendar ID.`);
+    }
+    if (new Set(normalizedCalendarIds).size !== normalizedCalendarIds.length) {
+      throw new Error(`Person "${id || '(empty)'}" has duplicate calendar IDs.`);
+    }
 
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) {
       throw new Error(`Invalid person id: ${id || '(empty)'}.`);
@@ -52,7 +68,7 @@ function normalizePeople(people) {
 
     ids.add(id);
     names.add(foldedName);
-    return { id, name, avatar, image };
+    return { id, name, avatar, image, calendarIds: normalizedCalendarIds };
   });
 }
 

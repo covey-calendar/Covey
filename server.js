@@ -128,6 +128,13 @@ const publicCalendars = () => calendars.map(({ id, name, type, color, icon }) =>
   ...(icon ? { icon } : {}),
 }));
 const publicPeople = () => people;
+const validPersonCalendarIds = (calendarIds) =>
+  Array.isArray(calendarIds) &&
+  calendarIds.length <= calendars.length &&
+  new Set(calendarIds).size === calendarIds.length &&
+  calendarIds.every((id) =>
+    typeof id === 'string' && calendars.some((calendar) => calendar.id === id && calendar.type === 'event'),
+  );
 
 app.get('/api/config', (_req, res) => res.json({
   kinds: KINDS,
@@ -137,7 +144,7 @@ app.get('/api/config', (_req, res) => res.json({
 app.get('/api/config/people', (_req, res) => res.json({ people: publicPeople() }));
 
 app.post('/api/config/people', (req, res) => {
-  const { name, avatar = 'person', image = null } = req.body || {};
+  const { name, avatar = 'person', image = null, calendarIds = [] } = req.body || {};
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   if (!trimmedName || trimmedName.length > 60) {
     return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
@@ -154,6 +161,9 @@ app.post('/api/config/people', (req, res) => {
   if (!isValidPersonImage(image)) {
     return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
   }
+  if (!validPersonCalendarIds(calendarIds)) {
+    return res.status(400).json({ error: 'Choose valid event calendars for this person.' });
+  }
 
   const baseId = trimmedName
     .normalize('NFKD')
@@ -168,7 +178,7 @@ app.post('/api/config/people', (req, res) => {
     id = `${baseId}-${suffix++}`;
   }
   try {
-    people = savePeopleStore(peopleStorePath, [...people, { id, name: trimmedName, avatar, image }]);
+    people = savePeopleStore(peopleStorePath, [...people, { id, name: trimmedName, avatar, image, calendarIds }]);
     res.status(201).json({ people: publicPeople(), person: people.find((person) => person.id === id) });
   } catch (error) {
     console.error('Unable to save person:', error);
@@ -182,7 +192,12 @@ app.put('/api/config/people/:id', (req, res) => {
     return res.status(404).json({ error: 'Person not found.' });
   }
 
-  const { name, avatar = person.avatar, image = person.image } = req.body || {};
+  const {
+    name,
+    avatar = person.avatar,
+    image = person.image,
+    calendarIds = person.calendarIds,
+  } = req.body || {};
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   if (!trimmedName || trimmedName.length > 60) {
     return res.status(400).json({ error: 'Person name must be 1-60 characters.' });
@@ -199,10 +214,13 @@ app.put('/api/config/people/:id', (req, res) => {
   if (!isValidPersonImage(image)) {
     return res.status(400).json({ error: 'Choose a valid PNG, JPEG, WebP, or built-in bird avatar image.' });
   }
+  if (!validPersonCalendarIds(calendarIds)) {
+    return res.status(400).json({ error: 'Choose valid event calendars for this person.' });
+  }
 
   try {
     people = savePeopleStore(peopleStorePath, people.map((entry) =>
-      entry.id === person.id ? { ...entry, name: trimmedName, avatar, image } : entry,
+      entry.id === person.id ? { ...entry, name: trimmedName, avatar, image, calendarIds } : entry,
     ));
     res.json({ people: publicPeople(), person: people.find((entry) => entry.id === person.id) });
   } catch (error) {
@@ -293,13 +311,40 @@ app.delete('/api/config/calendars/:id', (req, res) => {
   }
 
   try {
-    calendars = saveCalendarStore(
-      calendarStorePath,
-      calendars.filter((calendar) => calendar.id !== id),
-    );
+    const previousPeople = people;
+    const previousCalendars = calendars;
+    try {
+      people = savePeopleStore(
+        peopleStorePath,
+        people.map((person) => ({
+          ...person,
+          calendarIds: person.calendarIds.filter((calendarId) => calendarId !== id),
+        })),
+      );
+      calendars = saveCalendarStore(
+        calendarStorePath,
+        calendars.filter((calendar) => calendar.id !== id),
+      );
+    } catch (error) {
+      if (people !== previousPeople) {
+        try {
+          people = savePeopleStore(peopleStorePath, previousPeople);
+        } catch (rollbackError) {
+          console.error('Unable to restore people after calendar removal failed:', rollbackError);
+        }
+      }
+      if (calendars !== previousCalendars) {
+        try {
+          calendars = saveCalendarStore(calendarStorePath, previousCalendars);
+        } catch (rollbackError) {
+          console.error('Unable to restore calendars after removal failed:', rollbackError);
+        }
+      }
+      throw error;
+    }
     KINDS = [...new Set(calendars.map((calendar) => calendar.type))];
     ctx = null;
-    res.json({ kinds: KINDS, calendars: publicCalendars() });
+    res.json({ kinds: KINDS, calendars: publicCalendars(), people: publicPeople() });
   } catch (error) {
     console.error('Unable to remove calendar:', error);
     res.status(500).json({ error: `Could not remove calendar: ${error.message}` });

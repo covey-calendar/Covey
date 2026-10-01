@@ -173,10 +173,9 @@
                         facepile.append(overflow);
                     }
                     const facepileWidth =
-                        visiblePeople.length === 1
-                            ? 16
-                            : visiblePeople.length * 12 + 4 +
-                              (assignedPeople.length > visiblePeople.length ? 14 : 0);
+                        20 +
+                        (visiblePeople.length - 1) * 16 +
+                        (assignedPeople.length > visiblePeople.length ? 14 : 0);
                     n.style.position = "relative";
                     if (n.tagName === "STRONG") n.style.display = "block";
                     n.style.paddingRight = facepileWidth + 8 + "px";
@@ -298,7 +297,8 @@
                 personSaving = false,
                 editingPersonId = null,
                 addPersonAvatar = "person",
-                addPersonImage = null;
+                addPersonImage = null,
+                addPersonCalendarIds = new Set();
             let syncState = "pending",
                 lastSyncAt = null;
             let ev = [],
@@ -1634,6 +1634,39 @@
                     icons.append(button);
                 });
             }
+            function renderPersonCalendarChoices() {
+                const choices = $("person-calendar-choices");
+                choices.innerHTML = "";
+                const eventCalendars = calendarConfigs.filter(
+                    (calendar) => calendar.type === "event",
+                );
+                if (!eventCalendars.length) {
+                    choices.append(
+                        el("p", "text-xs text-mute", "No event calendars are configured."),
+                    );
+                    return;
+                }
+                eventCalendars.forEach((calendar) => {
+                    const selected = addPersonCalendarIds.has(calendar.id);
+                    const row = el(
+                        "label",
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer " +
+                            (selected ? "border-accent bg-accent/10" : "border-line"),
+                    );
+                    const checkbox = el("input", "h-4 w-4 accent-accent");
+                    checkbox.type = "checkbox";
+                    checkbox.checked = selected;
+                    checkbox.onchange = () => {
+                        if (checkbox.checked) addPersonCalendarIds.add(calendar.id);
+                        else addPersonCalendarIds.delete(calendar.id);
+                        row.className =
+                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer " +
+                            (checkbox.checked ? "border-accent bg-accent/10" : "border-line");
+                    };
+                    row.append(checkbox, el("span", "truncate", calendar.name));
+                    choices.append(row);
+                });
+            }
             function renderPersonAvatarChoices() {
                 const choices = $("person-avatar-choices");
                 choices.innerHTML = "";
@@ -1713,6 +1746,7 @@
                 setTab = "people";
                 addPersonAvatar = person?.avatar || "person";
                 addPersonImage = person?.image || null;
+                addPersonCalendarIds = new Set(person?.calendarIds || []);
                 $("person-name").value = person?.name || "";
                 $("person-image").value = "";
                 $("person-status").textContent = "";
@@ -1741,10 +1775,21 @@
                         "div",
                         "flex items-center gap-3 border-b border-line py-2 last:border-b-0",
                     );
-                    row.append(
-                        avatarNode(person, 36),
-                        el("span", "flex-1 min-w-0 truncate text-sm font-medium", person.name),
+                    const linkedCalendars = (person.calendarIds || [])
+                        .map((id) => calendarConfigs.find((calendar) => calendar.id === id))
+                        .filter((calendar) => calendar?.type === "event");
+                    const identity = el("div", "flex-1 min-w-0 flex flex-col");
+                    identity.append(
+                        el("span", "truncate text-sm font-medium", person.name),
+                        el(
+                            "span",
+                            "truncate text-xs text-mute",
+                            linkedCalendars.length
+                                ? linkedCalendars.map((calendar) => calendar.name).join(", ")
+                                : "No calendars associated",
+                        ),
                     );
+                    row.append(avatarNode(person, 36), identity);
 
                     const edit = el(
                         "button",
@@ -1776,6 +1821,7 @@
                     : editingPersonId
                       ? "Save changes"
                       : "Save person";
+                renderPersonCalendarChoices();
                 renderPersonAvatarChoices();
                 renderPersonPreview();
             }
@@ -1817,6 +1863,7 @@
                 editingPersonId = null;
                 addPersonAvatar = "person";
                 addPersonImage = null;
+                addPersonCalendarIds = new Set();
                 $("person-name").value = "";
                 $("person-image").value = "";
                 $("person-status").textContent = "";
@@ -1841,6 +1888,7 @@
                             name,
                             avatar: addPersonAvatar,
                             image: addPersonImage,
+                            calendarIds: [...addPersonCalendarIds],
                         },
                     );
                     people = result.people;
@@ -2320,6 +2368,8 @@
                     );
                     calendarConfigs = config.calendars;
                     kinds = config.kinds;
+                    people = config.people || people;
+                    addPersonCalendarIds.delete(calendar.id);
                     delete hide["calendar:" + calendar.id];
                     saveSet();
                     output.textContent = `Removed “${calendar.name}” from Covey.`;
