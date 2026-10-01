@@ -58,6 +58,7 @@
                 },
             };
         </script>
+
         <link rel="stylesheet" href="style.css" />
     </head>
     <body class="bg-bg text-ink">
@@ -79,7 +80,7 @@
                 </div>
             </div>
         </div>
-        <div class="h-full flex flex-col p-3 pt-2">
+        <div id="app-shell" class="h-full flex flex-col p-3 pt-2">
             <section class="flex-1 min-w-0 min-h-0 flex flex-col">
                 <header
                     class="flex items-center gap-2 mb-2 flex-wrap landscape:grid landscape:grid-cols-[1fr_auto_1fr]"
@@ -225,6 +226,13 @@
                 <p class="status text-xs text-accent mt-1"></p>
             </section>
         </div>
+
+        <div
+            id="today-overlay"
+            class="hidden fixed inset-0 z-[60] overflow-y-auto bg-bg"
+            aria-hidden="true"
+            tabindex="-1"
+        ></div>
 
         <button
             id="addbtn"
@@ -585,6 +593,36 @@
                             to Saturday.
                         </p>
                     </div>
+                    <div id="tab-today">
+                        <label class="flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">
+                            <span>
+                                <span class="block text-sm font-medium">Automatic Today view</span>
+                                <span class="mt-1 block text-xs text-mute">A full-screen daily briefing appears once each window: 6:00–9:00 AM and 4:00–6:00 PM.</span>
+                            </span>
+                            <input id="today-enabled" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                        </label>
+                        <p class="mt-3 text-xs text-mute">Dismiss a briefing to hide it for the rest of that window.</p>
+                        <section class="mt-6 border-t border-line pt-5">
+                            <label class="flex items-start justify-between gap-4">
+                                <span>
+                                    <span class="block text-sm font-medium">Show local weather</span>
+                                    <span class="mt-1 block text-xs text-mute">On by default. The forecast appears after you set a location below.</span>
+                                </span>
+                                <input id="today-weather-enabled" type="checkbox" checked class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                            </label>
+                            <label for="today-temperature-unit" class="mt-4 block text-sm font-medium">Temperature unit</label>
+                            <select id="today-temperature-unit" class="mt-1 w-full max-w-xs rounded-lg border border-line bg-bg p-2 text-sm text-ink">
+                                <option value="F">Fahrenheit (°F)</option>
+                                <option value="C">Celsius (°C)</option>
+                            </select>
+                            <label for="today-weather-location" class="mt-4 block text-sm font-medium">Weather location</label>
+                            <input id="today-weather-location" type="text" maxlength="100" autocomplete="address-level2" placeholder="City or postal code" class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink" />
+                            <p class="mt-2 text-xs text-mute">Your location is saved in this browser and sent to Open-Meteo to find the forecast. Covey does not save your coordinates.</p>
+                            <button id="today-weather-location-save" type="button" class="mt-3 rounded-full border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed">Save location</button>
+                            <p id="today-weather-location-status" role="status" aria-live="polite" class="mt-2 min-h-4 text-xs text-mute"></p>
+                        </section>
+                        <button id="today-preview" type="button" class="mt-4 w-full rounded-lg border border-line py-2 text-sm font-semibold">Preview Today view</button>
+                    </div>
                     <div id="tab-appearance">
                         <p class="text-sm font-medium mb-2">Text size</p>
                         <div
@@ -682,6 +720,7 @@
                 </div>
             </div>
         </div>
+
 
         <script src="app.js"></script>
     </body>

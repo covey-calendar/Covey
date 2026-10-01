@@ -141,46 +141,6 @@
                             ic(icon, 14) +
                             "</span>",
                     );
-                const assignedPeople = peopleForEvent(e);
-                if (assignedPeople.length) {
-                    const facepile = el("span", "inline-flex items-center");
-                    facepile.style.position = "absolute";
-                    facepile.style.right = "4px";
-                    facepile.style.top = "50%";
-                    facepile.style.transform = "translateY(-50%)";
-                    facepile.title = assignedPeople
-                        .map((person) => person.name)
-                        .join(", ");
-                    facepile.setAttribute("aria-hidden", "true");
-                    const visiblePeople = assignedPeople.slice(0, 2);
-                    visiblePeople.forEach((person, index) => {
-                        const avatar = avatarNode(person, 20);
-                        avatar.style.border = "1px solid var(--card)";
-                        avatar.style.marginLeft = index ? "-4px" : "0";
-                        avatar.title = person.name;
-                        facepile.append(avatar);
-                    });
-                    if (assignedPeople.length > visiblePeople.length) {
-                        const overflow = el(
-                            "span",
-                            "relative inline-grid place-items-center rounded-full bg-card text-ink shrink-0 text-[9px] font-semibold",
-                            "+" + (assignedPeople.length - visiblePeople.length),
-                        );
-                        overflow.style.width = "18px";
-                        overflow.style.height = "18px";
-                        overflow.style.marginLeft = "-4px";
-                        overflow.style.border = "1px solid var(--card)";
-                        facepile.append(overflow);
-                    }
-                    const facepileWidth =
-                        20 +
-                        (visiblePeople.length - 1) * 16 +
-                        (assignedPeople.length > visiblePeople.length ? 14 : 0);
-                    n.style.position = "relative";
-                    if (n.tagName === "STRONG") n.style.display = "block";
-                    n.style.paddingRight = facepileWidth + 8 + "px";
-                    n.append(facepile);
-                }
                 return n;
             };
             const mi = (n) => {
@@ -249,7 +209,12 @@
                 initView = null,
                 initFilt = null,
                 timeFormat = "device",
-                compactWeek = false;
+                compactWeek = false,
+                todayViewEnabled = true,
+                todayDismissed = [],
+                todayWeatherEnabled = true,
+                todayWeatherLocation = "",
+                todayTemperatureUnit = "F";
             let people = [];
             const hide = { event: false, reminder: false, dinner: false };
             try {
@@ -273,6 +238,14 @@
                 if (["device", "12", "24"].includes(st.timeFormat))
                     timeFormat = st.timeFormat;
                 compactWeek = !!st.compactWeek;
+                todayViewEnabled = st.todayViewEnabled !== false;
+                todayWeatherEnabled = st.todayWeatherEnabled !== false;
+                if (typeof st.todayWeatherLocation === "string")
+                    todayWeatherLocation = st.todayWeatherLocation.slice(0, 100);
+                if (["F", "C"].includes(st.todayTemperatureUnit))
+                    todayTemperatureUnit = st.todayTemperatureUnit;
+                if (Array.isArray(st.todayDismissed))
+                    todayDismissed = st.todayDismissed.filter((key) => typeof key === "string");
                 if (typeof st.filt === "string") initFilt = st.filt;
                 else if (
                     Number.isInteger(st.filt) &&
@@ -313,6 +286,18 @@
                 sheet = false,
                 detailEvent = null,
                 detailReturnFocus = null,
+                todayOverlayOpen = null,
+                todayOverlaySignature = "",
+                todayReturnFocus = null,
+                todayWeather = null,
+                todayWeatherRequestDate = "",
+                todayWeatherStatus = "idle",
+                todayWeatherMessage = "",
+                loadedMonths = [],
+                todayEventCacheDate = "",
+                todayEventCache = [],
+                todayEventsLoadingFor = "",
+                todayEventsError = "",
                 setOpen = false,
                 setTab = "calendars";
             cur.setDate(1);
@@ -342,6 +327,11 @@
                             filt,
                             timeFormat,
                             compactWeek,
+                            todayViewEnabled,
+                            todayDismissed,
+                            todayWeatherEnabled,
+                            todayWeatherLocation,
+                            todayTemperatureUnit,
                         }),
                     );
                 } catch (e) {}
@@ -477,6 +467,7 @@
                 }
                 return avatar;
             }
+
             function renderWhoOptions() {
                 const options = $("who-options");
                 options.innerHTML = "";
@@ -601,14 +592,16 @@
             // the same filtering is performed against the local event store.
             async function load() {
                 try {
+                    const requestedMonths = months();
                     const p = await Promise.all(
-                        months().map((k) =>
+                        requestedMonths.map((k) =>
                             demo
                                 ? local.filter((e) => e.d.startsWith(k))
                                 : api("GET", "/api/events?month=" + k),
                         ),
                     );
                     ev = p.flat();
+                    loadedMonths = requestedMonths;
                     status("");
                     syncState = "ok";
                     lastSyncAt = new Date();
@@ -701,6 +694,492 @@
                     minute: "2-digit",
                 });
                 updateSyncBadge();
+                checkTodayView(n);
+            }
+            function renderTodaySettings() {
+                $("today-enabled").checked = todayViewEnabled;
+                $("today-preview").disabled = !todayViewEnabled;
+                $("today-preview").classList.toggle("opacity-50", !todayViewEnabled);
+                $("today-weather-enabled").checked = todayWeatherEnabled;
+                $("today-temperature-unit").value = todayTemperatureUnit;
+                if (document.activeElement !== $("today-weather-location"))
+                    $("today-weather-location").value = todayWeatherLocation;
+                $("today-weather-location-save").disabled =
+                    !$("today-weather-location").value.trim();
+                $("today-weather-location-save").classList.toggle(
+                    "opacity-50",
+                    $("today-weather-location-save").disabled,
+                );
+            }
+            function scheduledTodaySlot(now) {
+                const minutes = now.getHours() * 60 + now.getMinutes();
+                if (minutes >= 6 * 60 && minutes < 9 * 60) return "morning";
+                if (minutes >= 16 * 60 && minutes < 18 * 60) return "evening";
+                return null;
+            }
+            function ensureTodayEvents(date) {
+                if (demo) {
+                    todayEventCacheDate = date;
+                    todayEventCache = local.filter((event) => event.d === date);
+                    todayEventsError = "";
+                    return;
+                }
+                const month = mkey(parse(date));
+                if (loadedMonths.includes(month)) {
+                    todayEventCacheDate = date;
+                    todayEventCache = ev.filter((event) => event.d === date);
+                    todayEventsLoadingFor = "";
+                    todayEventsError = "";
+                    return;
+                }
+                if (todayEventCacheDate === date || todayEventsLoadingFor === date) return;
+                todayEventsLoadingFor = date;
+                todayEventsError = "";
+                api("GET", "/api/events?month=" + month)
+                    .then((events) => {
+                        if (todayEventsLoadingFor !== date) return;
+                        todayEventCacheDate = date;
+                        todayEventCache = events.filter((event) => event.d === date);
+                        todayEventsLoadingFor = "";
+                        todayEventsError = "";
+                        renderTodayOverlay(true);
+                    })
+                    .catch((error) => {
+                        if (todayEventsLoadingFor !== date) return;
+                        todayEventCacheDate = date;
+                        todayEventCache = [];
+                        todayEventsLoadingFor = "";
+                        todayEventsError = error.message || "Could not load today’s events.";
+                        renderTodayOverlay(true);
+                    });
+            }
+            function retryTodayEvents() {
+                todayEventCacheDate = "";
+                todayEventsError = "";
+                ensureTodayEvents(iso(new Date()));
+                renderTodayOverlay(true);
+            }
+            function visibleTodayEvents(date) {
+                return (todayEventCacheDate === date ? todayEventCache : [])
+                    .filter((event) => event.d === date)
+                    .filter((event) => {
+                        const custom = event.calendarId &&
+                            !["event", "reminder", "dinner"].includes(event.calendarId);
+                        if (custom) return !hide["calendar:" + event.calendarId];
+                        return K[event.kind] ? !hide[event.kind] : !hide.event;
+                    })
+                    .sort((a, b) => (a.tm || "").localeCompare(b.tm || ""));
+            }
+            function openTodayOverlay(slot, preview = false) {
+                if (!todayOverlayOpen) todayReturnFocus = document.activeElement;
+                const date = iso(new Date());
+                todayOverlayOpen = {
+                    slot,
+                    preview,
+                    key: date + ":" + (preview ? "preview" : slot),
+                };
+                todayOverlaySignature = "";
+                renderTodayOverlay(true);
+                $("today-overlay-close").focus();
+            }
+            function closeTodayOverlay(dismiss = false) {
+                if (!todayOverlayOpen) return;
+                if (dismiss && !todayOverlayOpen.preview) {
+                    todayDismissed = [
+                        ...todayDismissed.filter((key) => key !== todayOverlayOpen.key),
+                        todayOverlayOpen.key,
+                    ].slice(-14);
+                    saveSet();
+                }
+                todayOverlayOpen = null;
+                todayOverlaySignature = "";
+                renderTodayOverlay(true);
+                const returnFocus = todayReturnFocus;
+                todayReturnFocus = null;
+                if (returnFocus?.isConnected) returnFocus.focus();
+            }
+            function checkTodayView(now = new Date()) {
+                if (todayOverlayOpen?.preview) return;
+                const slot = todayViewEnabled && !setOpen && !sheet && !detailEvent
+                    ? scheduledTodaySlot(now)
+                    : null;
+                const key = slot ? iso(now) + ":" + slot : null;
+                if (!slot || todayDismissed.includes(key)) {
+                    if (todayOverlayOpen) closeTodayOverlay(false);
+                    return;
+                }
+                if (todayOverlayOpen?.key !== key) openTodayOverlay(slot);
+            }
+            function formatTodayTemperature(value) {
+                if (!Number.isFinite(value)) return "—";
+                const temperature = todayTemperatureUnit === "C" ? (value - 32) * 5 / 9 : value;
+                return Math.round(temperature) + "°" + todayTemperatureUnit;
+            }
+            function weatherDescription(code) {
+                if (code === 0) return "Clear skies";
+                if ([1, 2].includes(code)) return "Partly cloudy";
+                if (code === 3) return "Cloudy";
+                if ([45, 48].includes(code)) return "Foggy";
+                if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle";
+                if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "Rain";
+                if ([71, 73, 75, 77, 85, 86].includes(code)) return "Snow";
+                if ([95, 96, 99].includes(code)) return "Thunderstorms";
+                return "Current conditions";
+            }
+
+            async function loadTodayWeather() {
+                if (
+                    !todayWeatherEnabled ||
+                    !todayWeatherLocation ||
+                    todayWeatherStatus === "loading"
+                )
+                    return;
+                const location = todayWeatherLocation;
+                const requestDate = iso(new Date());
+                todayWeatherRequestDate = requestDate;
+                todayWeatherStatus = "loading";
+                todayWeatherMessage = "";
+                renderTodayOverlay(true);
+                try {
+                    const geocodeQuery = new URLSearchParams({
+                        name: location,
+                        count: "1",
+                        language: "en",
+                        format: "json",
+                    });
+                    const geocodeResponse = await fetch(
+                        "https://geocoding-api.open-meteo.com/v1/search?" + geocodeQuery,
+                    );
+                    if (!geocodeResponse.ok)
+                        throw new Error("Location search is unavailable.");
+                    const places = await geocodeResponse.json();
+                    const place = places.results?.[0];
+                    if (!place)
+                        throw new Error("Could not find that city or postal code.");
+                    const query = new URLSearchParams({
+                        latitude: String(place.latitude),
+                        longitude: String(place.longitude),
+                        current: "temperature_2m,weather_code",
+                        daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                        temperature_unit: "fahrenheit",
+                        timezone: place.timezone || "auto",
+                        forecast_days: "1",
+                    });
+                    const response = await fetch(
+                        "https://api.open-meteo.com/v1/forecast?" + query,
+                    );
+                    if (!response.ok) throw new Error("Weather service is unavailable.");
+                    const forecast = await response.json();
+                    if (
+                        location !== todayWeatherLocation ||
+                        requestDate !== iso(new Date()) ||
+                        todayWeatherRequestDate !== requestDate
+                    )
+                        return;
+                    todayWeather = {
+                        date: requestDate,
+                        location: [place.name, place.admin1, place.country]
+                            .filter((part, index, parts) => part && parts.indexOf(part) === index)
+                            .join(", "),
+                        temperature: forecast.current?.temperature_2m,
+                        code: forecast.current?.weather_code ?? forecast.daily?.weather_code?.[0],
+                        high: forecast.daily?.temperature_2m_max?.[0],
+                        low: forecast.daily?.temperature_2m_min?.[0],
+                        rain: forecast.daily?.precipitation_probability_max?.[0],
+                    };
+                    todayWeatherStatus = "ready";
+                } catch (error) {
+                    if (
+                        requestDate !== iso(new Date()) ||
+                        todayWeatherRequestDate !== requestDate ||
+                        location !== todayWeatherLocation
+                    )
+                        return;
+                    todayWeatherStatus = "error";
+                    todayWeatherMessage = error.message || "Could not load the forecast.";
+                }
+                renderTodayOverlay(true);
+            }
+            function renderTodayOverlay(force = false) {
+                const overlay = $("today-overlay");
+                const active = todayOverlayOpen;
+                overlay.classList.toggle("hidden", !active);
+                overlay.setAttribute("aria-hidden", String(!active));
+                $("app-shell").inert = !!active;
+                $("addbtn").inert = !!active;
+                $("sheet").inert = !!active;
+                $("settings").inert = !!active;
+                $("event-detail").inert = !!active;
+                if (!active) {
+                    todayOverlaySignature = "";
+                    return;
+                }
+                const date = iso(new Date());
+                if (
+                    (todayWeather && todayWeather.date !== date) ||
+                    (todayWeatherRequestDate && todayWeatherRequestDate !== date)
+                ) {
+                    todayWeather = null;
+                    todayWeatherRequestDate = "";
+                    todayWeatherStatus = "idle";
+                    todayWeatherMessage = "";
+                }
+                ensureTodayEvents(date);
+                const todayEvents = visibleTodayEvents(date);
+                const eveningEvents = todayEvents.filter((event) =>
+                    !event.tm || event.kind === "dinner" ||
+                    Number(event.tm.slice(0, 2)) >= 16 ||
+                    (event.te && Number(event.te.slice(0, 2)) >= 16),
+                );
+                const events = active.slot === "evening" ? eveningEvents : todayEvents;
+                const signature = JSON.stringify([
+                    active.key,
+                    date,
+                    todayEvents.map((event) => [
+                        event.url,
+                        event.id,
+                        event.t,
+                        event.tm,
+                        event.te,
+                        event.kind,
+                        eventMemberName(event),
+                        peopleForEvent(event).map((person) => [
+                            person.id,
+                            person.name,
+                            person.avatar,
+                            person.image,
+                        ]),
+                    ]),
+                    todayEventsLoadingFor === date,
+                    todayEventsError,
+                    todayWeatherEnabled,
+                    todayWeatherLocation,
+                    todayTemperatureUnit,
+                    todayWeatherStatus,
+                    todayWeather,
+                    todayWeatherMessage,
+                ]);
+                if (!force && signature === todayOverlaySignature) return;
+                const focusedId = overlay.contains(document.activeElement)
+                    ? document.activeElement.id
+                    : "";
+                overlay.innerHTML = "";
+                overlay.setAttribute("role", "dialog");
+                overlay.setAttribute("aria-modal", "true");
+                overlay.setAttribute("aria-label", active.slot === "morning" ? "Today overview" : "This evening overview");
+                overlay.onkeydown = (event) => {
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeTodayOverlay(true);
+                        return;
+                    }
+                    if (event.key !== "Tab") return;
+                    const controls = [...overlay.querySelectorAll("button:not(:disabled), a[href]")];
+                    if (!controls.length) return;
+                    if (event.shiftKey && document.activeElement === controls[0]) {
+                        event.preventDefault();
+                        controls[controls.length - 1].focus();
+                    } else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) {
+                        event.preventDefault();
+                        controls[0].focus();
+                    }
+                };
+                const page = el("main", "flex min-h-screen items-center px-4 py-6 sm:px-8 sm:py-10");
+                page.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 1.5rem)";
+                page.style.paddingBottom = "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)";
+                const content = el("div", "mx-auto w-full max-w-5xl");
+                const header = el("header", "mb-8 flex items-start justify-between gap-4");
+                const heading = el("div", "min-w-0");
+                const now = new Date();
+                const greeting = active.slot === "morning"
+                    ? "Good morning."
+                    : now.getHours() >= 17 ? "Good evening." : "Good afternoon.";
+                heading.append(
+                    el(
+                        "p",
+                        "mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-accent",
+                        now.toLocaleDateString(undefined, {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                        }),
+                    ),
+                    el("h1", "text-3xl font-semibold tracking-tight sm:text-5xl", greeting),
+                    el(
+                        "p",
+                        "mt-2 text-base text-mute sm:text-lg",
+                        active.slot === "morning"
+                            ? "Here’s what’s happening today."
+                            : "Here’s what’s happening this evening.",
+                    ),
+                );
+                header.append(heading);
+                const close = el(
+                    "button",
+                    "h-11 w-11 shrink-0 grid place-items-center rounded-full border border-line bg-card text-mute",
+                );
+                close.id = "today-overlay-close";
+                close.type = "button";
+                close.setAttribute("aria-label", "Dismiss Today view");
+                close.innerHTML = ic("x", 20);
+                close.onclick = () => closeTodayOverlay(true);
+                header.append(close);
+                const columns = el("div", "grid gap-4 lg:grid-cols-[0.85fr_1.15fr]");
+                const weather = el("section", "rounded-2xl border border-line bg-card p-5 sm:p-6");
+                const weatherPlace = todayWeather?.location || todayWeatherLocation;
+                weather.append(
+                    el("h2", "text-lg font-semibold", "Today’s weather"),
+                    el(
+                        "p",
+                        "mt-1 text-xs text-mute",
+                        !todayWeatherEnabled
+                            ? "Weather is off in settings"
+                            : weatherPlace || "Set a location in Today settings",
+                    ),
+                );
+                if (todayWeatherEnabled && todayWeatherStatus === "ready" && todayWeather) {
+                    const row = el("div", "mt-5 flex items-center gap-4");
+                    const current = el("div", null);
+                    current.append(
+                        el(
+                            "p",
+                            "text-5xl font-semibold",
+                            formatTodayTemperature(todayWeather.temperature),
+                        ),
+                        el("p", "text-sm text-mute", weatherDescription(todayWeather.code)),
+                    );
+                    row.append(current);
+                    weather.append(row);
+                    const detail = [
+                        Number.isFinite(todayWeather.high) ? "High " + formatTodayTemperature(todayWeather.high) : "",
+                        Number.isFinite(todayWeather.low) ? "Low " + formatTodayTemperature(todayWeather.low) : "",
+                        Number.isFinite(todayWeather.rain) ? todayWeather.rain + "% chance of rain" : "",
+                    ].filter(Boolean).join(" · ");
+                    if (detail) weather.append(el("p", "mt-4 text-sm text-mute", detail));
+                } else {
+                    const message = !todayWeatherEnabled
+                        ? "Turn on weather in Today settings to see a forecast."
+                        : !todayWeatherLocation
+                          ? "Choose a city or postal code in Today settings to see the local forecast."
+                          : todayWeatherStatus === "loading"
+                            ? "Loading forecast for " + todayWeatherLocation + "…"
+                            : todayWeatherMessage || "The local forecast will load automatically.";
+                    weather.append(el("p", "mt-5 text-sm text-mute", message));
+                    if (!todayWeatherEnabled || !todayWeatherLocation) {
+                        const configureWeather = el(
+                            "button",
+                            "mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on",
+                            todayWeatherEnabled ? "Set weather location" : "Weather settings",
+                        );
+                        configureWeather.type = "button";
+                        configureWeather.onclick = () => {
+                            closeTodayOverlay(false);
+                            setOpen = true;
+                            setTab = "today";
+                            render();
+                            $(todayWeatherEnabled ? "today-weather-location" : "today-weather-enabled").focus();
+                        };
+                        weather.append(configureWeather);
+                    }
+                    if (
+                        todayWeatherEnabled &&
+                        todayWeatherLocation &&
+                        todayWeatherStatus === "error"
+                    ) {
+                        const retryWeather = el("button", "mt-3 text-sm font-semibold text-accent", "Try again");
+                        retryWeather.type = "button";
+                        retryWeather.onclick = loadTodayWeather;
+                        weather.append(retryWeather);
+                    }
+                }
+                if (todayWeather) {
+                    const attribution = el("a", "mt-4 inline-block text-[11px] text-mute underline", "Weather by Open-Meteo");
+                    attribution.href = "https://open-meteo.com/";
+                    attribution.target = "_blank";
+                    attribution.rel = "noopener noreferrer";
+                    weather.append(attribution);
+                }
+                const plans = el("section", "rounded-2xl border border-line bg-card p-5 sm:p-6");
+                plans.append(
+                    el("h2", "text-lg font-semibold", active.slot === "morning" ? "On the calendar" : "This evening"),
+                    el(
+                        "p",
+                        "mt-1 text-xs text-mute",
+                        events.length
+                            ? `${events.length} ${events.length === 1 ? "plan" : "plans"}`
+                            : todayEventsLoadingFor === date
+                              ? "Loading today’s calendar"
+                              : todayEventsError
+                                ? "Calendar unavailable"
+                                : "A little breathing room",
+                    ),
+                );
+                if (!events.length) {
+                    plans.append(
+                        el(
+                            "p",
+                            "mt-6 rounded-xl bg-bg p-4 text-sm text-mute",
+                            todayEventsLoadingFor === date
+                                ? "Checking the calendar…"
+                                : todayEventsError
+                                  ? todayEventsError
+                                  : active.slot === "morning"
+                                    ? "Nothing planned today. Enjoy the space."
+                                    : "No evening plans on the calendar.",
+                        ),
+                    );
+                    if (todayEventsError) {
+                        const retry = el("button", "mt-3 text-sm font-semibold text-accent", "Try again");
+                        retry.type = "button";
+                        retry.onclick = retryTodayEvents;
+                        plans.append(retry);
+                    }
+                } else {
+                    const list = el("div", "mt-4 flex flex-col gap-3");
+                    events.forEach((event) => {
+                        const color = sty(event);
+                        const card = el("article", "rounded-xl bg-bg p-4");
+                        card.style.borderLeft = "4px solid " + color.d;
+                        card.append(
+                            el("p", "text-xs font-semibold text-mute", event.tm ? trange(event) : "All day"),
+                            el("h3", "mt-1 text-base font-semibold", event.t || "(no title)"),
+                        );
+                        const assigned = peopleForEvent(event);
+                        const peopleRow = el("div", "mt-3 flex flex-wrap items-center gap-2");
+                        if (assigned.length) {
+                            assigned.forEach((person) => {
+                                const chip = el("span", "inline-flex items-center gap-1.5 rounded-full border border-line bg-card py-1 pl-1 pr-2.5 text-xs font-medium");
+                                chip.append(avatarNode(person, 24), el("span", null, person.name));
+                                peopleRow.append(chip);
+                            });
+                        } else {
+                            peopleRow.append(el("span", "rounded-full border border-line bg-card px-2.5 py-1 text-xs text-mute", eventMemberName(event)));
+                        }
+                        card.append(peopleRow);
+                        list.append(card);
+                    });
+                    plans.append(list);
+                }
+                columns.append(weather, plans);
+                const footer = el("div", "mt-6 flex justify-end");
+                const dismiss = el("button", "rounded-full border border-line bg-card px-5 py-2.5 text-sm font-semibold", "Dismiss for now");
+                dismiss.id = "today-overlay-dismiss";
+                dismiss.type = "button";
+                dismiss.onclick = () => closeTodayOverlay(true);
+                footer.append(dismiss);
+                content.append(header, columns, footer);
+                page.append(content);
+                overlay.append(page);
+                todayOverlaySignature = signature;
+                if (focusedId) overlay.querySelector("#" + focusedId)?.focus();
+                if (
+                    todayWeatherEnabled &&
+                    todayWeatherLocation &&
+                    todayWeatherStatus === "idle"
+                )
+                    loadTodayWeather();
             }
             renderWhoOptions();
             function openSheet(k) {
@@ -1425,12 +1904,14 @@
                     renderTheme();
                     renderTimeFormat();
                     renderWeekHours();
+                    renderTodaySettings();
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
                 $("sheet").classList.toggle("flex", sheet);
                 $("event-detail").classList.toggle("hidden", !detailEvent);
                 $("event-detail").classList.toggle("flex", !!detailEvent);
                 if (detailEvent) renderEventDetails(detailEvent);
+                renderTodayOverlay();
                 if (!sheet) return;
                 formKind();
                 $("sd").textContent = parse(sel).toLocaleDateString(undefined, {
@@ -1542,6 +2023,7 @@
                     ["calendars", "Calendars"],
                     ["people", "People"],
                     ["view", "View"],
+                    ["today", "Today"],
                     ["appearance", "Appearance"],
                     ["about", "About"],
                 ];
@@ -2460,6 +2942,10 @@
             };
             document.addEventListener("keydown", (e) => {
                 if (e.key !== "Escape") return;
+                if (todayOverlayOpen) {
+                    closeTodayOverlay(true);
+                    return;
+                }
                 if (detailEvent) {
                     closeEventDetails();
                 } else if (setOpen) {
@@ -2505,6 +2991,60 @@
             $("setbtn").onclick = () => {
                 setOpen = true;
                 render();
+            };
+            $("today-enabled").onchange = (event) => {
+                todayViewEnabled = event.target.checked;
+                saveSet();
+                renderTodaySettings();
+                if (!todayViewEnabled) closeTodayOverlay(false);
+                else checkTodayView();
+            };
+            $("today-preview").onclick = () => {
+                const now = new Date();
+                openTodayOverlay(
+                    scheduledTodaySlot(now) || (now.getHours() < 12 ? "morning" : "evening"),
+                    true,
+                );
+            };
+            $("today-temperature-unit").onchange = (event) => {
+                todayTemperatureUnit = event.target.value === "C" ? "C" : "F";
+                saveSet();
+                renderTodayOverlay(true);
+            };
+            $("today-weather-enabled").onchange = (event) => {
+                todayWeatherEnabled = event.target.checked;
+                if (todayWeatherStatus === "loading") {
+                    todayWeatherStatus = todayWeather ? "ready" : "idle";
+                    todayWeatherRequestDate = todayWeather?.date || "";
+                } else if (todayWeatherEnabled && todayWeatherStatus === "error") {
+                    todayWeatherStatus = "idle";
+                    todayWeatherRequestDate = "";
+                }
+                saveSet();
+                renderTodaySettings();
+                renderTodayOverlay(true);
+            };
+            $("today-weather-location").oninput = () => {
+                $("today-weather-location-status").textContent = "";
+                renderTodaySettings();
+            };
+            $("today-weather-location-save").onclick = () => {
+                const location = $("today-weather-location").value.trim();
+                if (!location) {
+                    $("today-weather-location-status").textContent =
+                        "Enter a city or postal code first.";
+                    return;
+                }
+                todayWeatherLocation = location;
+                todayWeather = null;
+                todayWeatherRequestDate = "";
+                todayWeatherStatus = "idle";
+                todayWeatherMessage = "";
+                saveSet();
+                $("today-weather-location-status").textContent =
+                    "Weather location saved.";
+                renderTodaySettings();
+                renderTodayOverlay(true);
             };
             $("sclose").onclick = () => {
                 setOpen = false;
