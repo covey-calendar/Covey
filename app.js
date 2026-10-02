@@ -1181,12 +1181,22 @@
                     const list = el("div", "mt-4 flex flex-col gap-3");
                     events.forEach((event) => {
                         const color = sty(event);
-                        const card = el("article", "rounded-xl bg-bg p-4");
+                        const dinner = event.kind === "dinner";
+                        const card = el("article", "rounded-xl p-4" + (dinner ? "" : " bg-bg"));
                         card.style.borderLeft = "4px solid " + color.d;
-                        card.append(
-                            el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"),
-                            el("h3", "mt-1 text-xl font-semibold", event.t || "(no title)"),
-                        );
+                        if (dinner)
+                            card.style.backgroundColor = "color-mix(in srgb, " + color.c + " 22%, var(--bg))";
+                        const meta = el("div", "flex items-center justify-between gap-2");
+                        meta.append(el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"));
+                        if (dinner) {
+                            const badge = el("span", "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold");
+                            badge.style.color = color.d;
+                            badge.style.backgroundColor = "color-mix(in srgb, " + color.c + " 55%, var(--bg))";
+                            badge.innerHTML = ic("utensils", 14);
+                            badge.append(el("span", null, "Dinner"));
+                            meta.append(badge);
+                        }
+                        card.append(meta, el("h3", "mt-1 text-xl font-semibold", event.t || "(no title)"));
                         const assigned = peopleForEvent(event);
                         const peopleRow = el("div", "mt-3 flex flex-wrap items-center gap-2");
                         if (assigned.length) {
@@ -1204,13 +1214,7 @@
                     plans.append(list);
                 }
                 columns.append(weather, plans);
-                const footer = el("div", "mt-6 flex justify-end");
-                const dismiss = el("button", "rounded-full border border-line bg-card px-5 py-2.5 text-sm font-semibold", "Dismiss for now");
-                dismiss.id = "today-overlay-dismiss";
-                dismiss.type = "button";
-                dismiss.onclick = () => closeTodayOverlay(true);
-                footer.append(dismiss);
-                content.append(header, columns, footer);
+                content.append(header, columns);
                 page.append(content);
                 overlay.append(page);
                 todayOverlaySignature = signature;
