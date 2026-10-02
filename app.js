@@ -781,6 +781,7 @@
                     })
                     .sort((a, b) => (a.tm || "").localeCompare(b.tm || ""));
             }
+
             function openTodayOverlay(slot, preview = false) {
                 if (!todayOverlayOpen) todayReturnFocus = document.activeElement;
                 const date = iso(new Date());
@@ -1024,9 +1025,9 @@
                         controls[0].focus();
                     }
                 };
-                const page = el("main", "flex min-h-screen items-center px-4 py-6 sm:px-8 sm:py-10");
-                page.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 1.5rem)";
-                page.style.paddingBottom = "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)";
+                const page = el("main", "flex min-h-screen items-center px-4 py-6 sm:px-8 sm:py-12");
+                page.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 2.5rem)";
+                page.style.paddingBottom = "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)";
                 const content = el("div", "mx-auto w-full max-w-6xl");
                 const header = el("header", "mb-14 flex items-start justify-between gap-4");
                 const heading = el("div", "min-w-0");
@@ -1037,7 +1038,7 @@
                 heading.append(
                     el(
                         "p",
-                        "mb-2 text-sm font-medium text-accent",
+                        "mb-2 text-base font-medium text-accent",
                         now.toLocaleDateString(undefined, {
                             weekday: "long",
                             month: "long",
@@ -1181,19 +1182,20 @@
                     const list = el("div", "mt-4 flex flex-col gap-3");
                     events.forEach((event) => {
                         const color = sty(event);
-                        const dinner = event.kind === "dinner";
-                        const card = el("article", "rounded-xl p-4" + (dinner ? "" : " bg-bg"));
+                        const typeLabel = { dinner: "Dinner", reminder: "Reminder" }[event.kind];
+                        const card = el("article", "rounded-xl p-4" + (typeLabel ? "" : " bg-bg"));
                         card.style.borderLeft = "4px solid " + color.d;
-                        if (dinner)
+                        if (typeLabel)
                             card.style.backgroundColor = "color-mix(in srgb, " + color.c + " 22%, var(--bg))";
                         const meta = el("div", "flex items-center justify-between gap-2");
-                        meta.append(el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"));
-                        if (dinner) {
+                        if (event.tm || !typeLabel)
+                            meta.append(el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"));
+                        if (typeLabel) {
                             const badge = el("span", "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold");
                             badge.style.color = color.d;
                             badge.style.backgroundColor = "color-mix(in srgb, " + color.c + " 55%, var(--bg))";
-                            badge.innerHTML = ic("utensils", 14);
-                            badge.append(el("span", null, "Dinner"));
+                            badge.innerHTML = ic(K[event.kind].i, 14);
+                            badge.append(el("span", null, typeLabel));
                             meta.append(badge);
                         }
                         card.append(meta, el("h3", "mt-1 text-xl font-semibold", event.t || "(no title)"));
@@ -1205,10 +1207,10 @@
                                 chip.append(avatarNode(person, 24), el("span", null, person.name));
                                 peopleRow.append(chip);
                             });
-                        } else {
+                        } else if (!typeLabel) {
                             peopleRow.append(el("span", "rounded-full border border-line bg-card px-2.5 py-1 text-xs text-mute", eventMemberName(event)));
                         }
-                        card.append(peopleRow);
+                        if (assigned.length || !typeLabel) card.append(peopleRow);
                         list.append(card);
                     });
                     plans.append(list);
