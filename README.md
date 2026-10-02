@@ -113,8 +113,6 @@ Covey includes iOS icons and an Android web app manifest with 192×192 and 512×
 
 Covey is open source and intended to be self-hosted and adapted to your needs. Contributions, fixes, and ideas are welcome.
 
-Project repository: [github.com/vinceangeloni/Covey](https://github.com/vinceangeloni/Covey)
-
 ## License
 
 No license has been declared for this repository yet. Until a license is added, standard copyright restrictions apply to reuse of the source code.
