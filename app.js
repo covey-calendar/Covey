@@ -13,6 +13,15 @@
                 "chevron-left": '<path d="m15 18-6-6 6-6"/>',
                 "chevron-right": '<path d="m9 18 6-6-6-6"/>',
                 sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+                cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+                "cloud-sun": '<path d="M12 2v2"/><path d="m4.93 4.93 1.42 1.42"/><path d="M20 12h2"/><path d="m19.07 4.93-1.42 1.42"/><path d="M16 6a4 4 0 0 0-7.7 1.5"/><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+                "cloud-moon": '<path d="M19.5 13.5A7 7 0 0 1 10.5 4.5 7 7 0 1 0 19.5 13.5Z"/><path d="M17.5 21H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+                "cloud-fog": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M3 19h18"/><path d="M5 22h14"/>',
+                "cloud-drizzle": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 19v1"/><path d="M12 19v1"/><path d="M16 19v1"/>',
+                "cloud-rain": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m8 19-1 2"/><path d="m16 19-1 2"/><path d="m12 20-1 2"/>',
+                "cloud-sun-rain": '<path d="M12 2v2"/><path d="m4.93 4.93 1.42 1.42"/><path d="M20 12h2"/><path d="m19.07 4.93-1.42 1.42"/><path d="M16 6a4 4 0 0 0-7.7 1.5"/><path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m8 19-1 2"/><path d="m16 19-1 2"/><path d="m12 20-1 2"/>',
+                "cloud-snow": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 19v.01"/><path d="M12 21v.01"/><path d="M16 19v.01"/>',
+                "cloud-lightning": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m13 15-3 5h4l-2 4"/>',
                 moon: '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>',
                 settings:
                     '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
@@ -293,6 +302,7 @@
                 todayWeatherRequestDate = "",
                 todayWeatherStatus = "idle",
                 todayWeatherMessage = "",
+                todayWeatherLastRequestAt = 0,
                 loadedMonths = [],
                 todayEventCacheDate = "",
                 todayEventCache = [],
@@ -695,6 +705,7 @@
                 });
                 updateSyncBadge();
                 checkTodayView(n);
+                refreshTodayWeatherIfDue(n);
             }
             function renderTodaySettings() {
                 $("today-enabled").checked = todayViewEnabled;
@@ -815,6 +826,31 @@
                 const temperature = todayTemperatureUnit === "C" ? (value - 32) * 5 / 9 : value;
                 return Math.round(temperature) + "°" + todayTemperatureUnit;
             }
+            function weatherIcon(code, isDay) {
+                if (code === 0) return isDay ? "sun" : "moon";
+                if ([1, 2].includes(code)) return isDay ? "cloud-sun" : "cloud-moon";
+                if (code === 3) return "cloud";
+                if ([45, 48].includes(code)) return "cloud-fog";
+                if ([51, 53, 55, 56, 57].includes(code)) return "cloud-drizzle";
+                if ([80, 81, 82].includes(code)) return isDay ? "cloud-sun-rain" : "cloud-rain";
+                if ([61, 63, 65, 66, 67].includes(code)) return "cloud-rain";
+                if ([71, 73, 75, 77, 85, 86].includes(code)) return "cloud-snow";
+                if ([95, 96, 99].includes(code)) return "cloud-lightning";
+                return "cloud";
+            }
+            function refreshTodayWeatherIfDue(now = new Date()) {
+                if (
+                    !todayOverlayOpen ||
+                    !todayWeatherEnabled ||
+                    !todayWeatherLocation ||
+                    todayWeatherStatus === "loading" ||
+                    !todayWeatherLastRequestAt ||
+                    now.getTime() - todayWeatherLastRequestAt < 15 * 60 * 1000
+                )
+                    return;
+                todayWeatherStatus = "idle";
+                loadTodayWeather();
+            }
             function weatherDescription(code) {
                 if (code === 0) return "Clear skies";
                 if ([1, 2].includes(code)) return "Partly cloudy";
@@ -837,6 +873,7 @@
                 const location = todayWeatherLocation;
                 const requestDate = iso(new Date());
                 todayWeatherRequestDate = requestDate;
+                todayWeatherLastRequestAt = Date.now();
                 todayWeatherStatus = "loading";
                 todayWeatherMessage = "";
                 renderTodayOverlay(true);
@@ -859,7 +896,7 @@
                     const query = new URLSearchParams({
                         latitude: String(place.latitude),
                         longitude: String(place.longitude),
-                        current: "temperature_2m,weather_code",
+                        current: "temperature_2m,weather_code,is_day",
                         daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
                         temperature_unit: "fahrenheit",
                         timezone: place.timezone || "auto",
@@ -883,6 +920,7 @@
                             .join(", "),
                         temperature: forecast.current?.temperature_2m,
                         code: forecast.current?.weather_code ?? forecast.daily?.weather_code?.[0],
+                        isDay: forecast.current?.is_day === 1,
                         high: forecast.daily?.temperature_2m_max?.[0],
                         low: forecast.daily?.temperature_2m_min?.[0],
                         rain: forecast.daily?.precipitation_probability_max?.[0],
@@ -923,6 +961,7 @@
                     todayWeatherRequestDate = "";
                     todayWeatherStatus = "idle";
                     todayWeatherMessage = "";
+                    todayWeatherLastRequestAt = 0;
                 }
                 ensureTodayEvents(date);
                 const todayEvents = visibleTodayEvents(date);
@@ -988,8 +1027,8 @@
                 const page = el("main", "flex min-h-screen items-center px-4 py-6 sm:px-8 sm:py-10");
                 page.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 1.5rem)";
                 page.style.paddingBottom = "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)";
-                const content = el("div", "mx-auto w-full max-w-5xl");
-                const header = el("header", "mb-8 flex items-start justify-between gap-4");
+                const content = el("div", "mx-auto w-full max-w-6xl");
+                const header = el("header", "mb-14 flex items-start justify-between gap-4");
                 const heading = el("div", "min-w-0");
                 const now = new Date();
                 const greeting = active.slot === "morning"
@@ -998,7 +1037,7 @@
                 heading.append(
                     el(
                         "p",
-                        "mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-accent",
+                        "mb-2 text-sm font-medium text-accent",
                         now.toLocaleDateString(undefined, {
                             weekday: "long",
                             month: "long",
@@ -1006,7 +1045,7 @@
                             year: "numeric",
                         }),
                     ),
-                    el("h1", "text-3xl font-semibold tracking-tight sm:text-5xl", greeting),
+                    el("h1", "text-3xl font-semibold tracking-tight sm:text-6xl", greeting),
                     el(
                         "p",
                         "mt-2 text-base text-mute sm:text-lg",
@@ -1018,7 +1057,7 @@
                 header.append(heading);
                 const close = el(
                     "button",
-                    "h-11 w-11 shrink-0 grid place-items-center rounded-full border border-line bg-card text-mute",
+                    "h-11 w-11 shrink-0 grid place-items-center rounded-full bg-card text-mute",
                 );
                 close.id = "today-overlay-close";
                 close.type = "button";
@@ -1026,14 +1065,14 @@
                 close.innerHTML = ic("x", 20);
                 close.onclick = () => closeTodayOverlay(true);
                 header.append(close);
-                const columns = el("div", "grid gap-4 lg:grid-cols-[0.85fr_1.15fr]");
-                const weather = el("section", "rounded-2xl border border-line bg-card p-5 sm:p-6");
+                const columns = el("div", "grid gap-6 lg:grid-cols-[0.85fr_1.15fr]");
+                const weather = el("section", "rounded-2xl bg-card p-5 sm:p-6");
                 const weatherPlace = todayWeather?.location || todayWeatherLocation;
                 weather.append(
-                    el("h2", "text-lg font-semibold", "Today’s weather"),
+                    el("h2", "text-2xl font-semibold", "Today’s weather"),
                     el(
                         "p",
-                        "mt-1 text-xs text-mute",
+                        "mt-1 text-mute",
                         !todayWeatherEnabled
                             ? "Weather is off in settings"
                             : weatherPlace || "Set a location in Today settings",
@@ -1041,6 +1080,8 @@
                 );
                 if (todayWeatherEnabled && todayWeatherStatus === "ready" && todayWeather) {
                     const row = el("div", "mt-5 flex items-center gap-4");
+                    const icon = el("div", "shrink-0 text-accent");
+                    icon.innerHTML = ic(weatherIcon(todayWeather.code, todayWeather.isDay), 52);
                     const current = el("div", null);
                     current.append(
                         el(
@@ -1048,16 +1089,16 @@
                             "text-5xl font-semibold",
                             formatTodayTemperature(todayWeather.temperature),
                         ),
-                        el("p", "text-sm text-mute", weatherDescription(todayWeather.code)),
+                        el("p", "text-lg text-mute", weatherDescription(todayWeather.code)),
                     );
-                    row.append(current);
+                    row.append(icon, current);
                     weather.append(row);
                     const detail = [
                         Number.isFinite(todayWeather.high) ? "High " + formatTodayTemperature(todayWeather.high) : "",
                         Number.isFinite(todayWeather.low) ? "Low " + formatTodayTemperature(todayWeather.low) : "",
                         Number.isFinite(todayWeather.rain) ? todayWeather.rain + "% chance of rain" : "",
                     ].filter(Boolean).join(" · ");
-                    if (detail) weather.append(el("p", "mt-4 text-sm text-mute", detail));
+                    if (detail) weather.append(el("p", "mt-4 text-md text-mute", detail));
                 } else {
                     const message = !todayWeatherEnabled
                         ? "Turn on weather in Today settings to see a forecast."
@@ -1101,12 +1142,12 @@
                     attribution.rel = "noopener noreferrer";
                     weather.append(attribution);
                 }
-                const plans = el("section", "rounded-2xl border border-line bg-card p-5 sm:p-6");
+                const plans = el("section", "rounded-2xl bg-card p-5 sm:p-6");
                 plans.append(
-                    el("h2", "text-lg font-semibold", active.slot === "morning" ? "On the calendar" : "This evening"),
+                    el("h2", "text-2xl font-semibold", active.slot === "morning" ? "On the calendar" : "This evening"),
                     el(
                         "p",
-                        "mt-1 text-xs text-mute",
+                        "mt-1 text-base text-mute",
                         events.length
                             ? `${events.length} ${events.length === 1 ? "plan" : "plans"}`
                             : todayEventsLoadingFor === date
@@ -1143,8 +1184,8 @@
                         const card = el("article", "rounded-xl bg-bg p-4");
                         card.style.borderLeft = "4px solid " + color.d;
                         card.append(
-                            el("p", "text-xs font-semibold text-mute", event.tm ? trange(event) : "All day"),
-                            el("h3", "mt-1 text-base font-semibold", event.t || "(no title)"),
+                            el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"),
+                            el("h3", "mt-1 text-xl font-semibold", event.t || "(no title)"),
                         );
                         const assigned = peopleForEvent(event);
                         const peopleRow = el("div", "mt-3 flex flex-wrap items-center gap-2");
@@ -1180,6 +1221,8 @@
                     todayWeatherStatus === "idle"
                 )
                     loadTodayWeather();
+                else
+                    refreshTodayWeatherIfDue();
             }
             renderWhoOptions();
             function openSheet(k) {
@@ -3040,6 +3083,7 @@
                 todayWeatherRequestDate = "";
                 todayWeatherStatus = "idle";
                 todayWeatherMessage = "";
+                todayWeatherLastRequestAt = 0;
                 saveSet();
                 $("today-weather-location-status").textContent =
                     "Weather location saved.";
