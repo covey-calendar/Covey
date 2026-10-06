@@ -114,7 +114,6 @@ Covey includes iOS icons and an Android web app manifest with 192×192 and 512×
 Covey is open source and intended to be self-hosted and adapted to your needs. Contributions, fixes, and ideas are welcome.
 
 Project repository: [github.com/monster-party/Covey](https://github.com/monster-party/Covey)
-
 ## License
 
 Covey is licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). You may use, modify, and redistribute Covey under the terms of that license. If you modify Covey and make it available to users over a network, you must also make the corresponding source code available under the same license.
