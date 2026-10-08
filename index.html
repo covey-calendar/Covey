@@ -438,17 +438,6 @@
                                 </button>
                             </div>
 
-                            <div id="peoplewrap" class="mt-4 border-t border-line pt-4" style="display: none">
-                                <p class="text-xs text-mute mb-1.5">
-                                    Filter events by person
-                                </p>
-                                <div
-                                    id="people"
-                                    role="group"
-                                    aria-label="Filter calendar by person"
-                                    class="flex flex-wrap gap-2"
-                                ></div>
-                            </div>
                         </section>
                     </div>
                     <div id="tab-people">
@@ -592,6 +581,14 @@
                             Anything under 7 starts from today; 7 shows Sunday
                             to Saturday.
                         </p>
+                        <label class="mt-5 flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">
+                            <span>
+                                <span class="block text-sm font-medium">Keep screen awake</span>
+                                <span class="mt-1 block text-xs text-mute">Prevent the display from sleeping while Covey is visible. This may increase battery use.</span>
+                            </span>
+                            <input id="keep-screen-awake" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
+                        </label>
+                        <p id="wake-lock-status" role="status" aria-live="polite" class="mt-2 min-h-4 text-xs text-mute"></p>
                     </div>
                     <div id="tab-today">
                         <label class="flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">

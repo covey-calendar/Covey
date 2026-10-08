@@ -216,9 +216,9 @@
                 manual = null,
                 ovr = null,
                 initView = null,
-                initFilt = null,
                 timeFormat = "device",
                 compactWeek = false,
+                keepScreenAwake = false,
                 todayViewEnabled = true,
                 todayDismissed = [],
                 todayWeatherEnabled = true,
@@ -247,6 +247,7 @@
                 if (["device", "12", "24"].includes(st.timeFormat))
                     timeFormat = st.timeFormat;
                 compactWeek = !!st.compactWeek;
+                keepScreenAwake = !!st.keepScreenAwake;
                 todayViewEnabled = st.todayViewEnabled !== false;
                 todayWeatherEnabled = st.todayWeatherEnabled !== false;
                 if (typeof st.todayWeatherLocation === "string")
@@ -255,12 +256,6 @@
                     todayTemperatureUnit = st.todayTemperatureUnit;
                 if (Array.isArray(st.todayDismissed))
                     todayDismissed = st.todayDismissed.filter((key) => typeof key === "string");
-                if (typeof st.filt === "string") initFilt = st.filt;
-                else if (
-                    Number.isInteger(st.filt) &&
-                    M[st.filt]?.on
-                )
-                    initFilt = "member:" + M[st.filt].n;
             } catch (e) {}
             try {
                 const mo = localStorage.getItem("gaggle-theme");
@@ -288,7 +283,6 @@
                 kinds = ["event", "reminder", "dinner"],
                 addKind = "event",
                 view = initView || "week",
-                filt = initFilt,
                 sel = iso(new Date()),
                 wstart = home(),
                 cur = new Date(),
@@ -310,6 +304,8 @@
                 todayEventsError = "",
                 setOpen = false,
                 setTab = "calendars";
+            let screenWakeLock = null,
+                wakeLockMessage = "";
             cur.setDate(1);
             try {
                 local = JSON.parse(localStorage.getItem("gaggle") || "[]");
@@ -334,9 +330,9 @@
                             darkFrom: dFrom,
                             darkTo: dTo,
                             view,
-                            filt,
                             timeFormat,
                             compactWeek,
+                            keepScreenAwake,
                             todayViewEnabled,
                             todayDismissed,
                             todayWeatherEnabled,
@@ -346,6 +342,57 @@
                     );
                 } catch (e) {}
             };
+            function renderWakeLockSettings() {
+                const input = $("keep-screen-awake");
+                const message = $("wake-lock-status");
+                if (!input || !message) return;
+                const supported = "wakeLock" in navigator;
+                input.checked = keepScreenAwake;
+                input.disabled = !supported;
+                message.textContent = !supported
+                    ? "Screen wake lock is not supported by this browser."
+                    : wakeLockMessage;
+            }
+            async function requestScreenWakeLock() {
+                if (
+                    !keepScreenAwake ||
+                    document.visibilityState !== "visible" ||
+                    !("wakeLock" in navigator) ||
+                    screenWakeLock
+                )
+                    return;
+                try {
+                    const lock = await navigator.wakeLock.request("screen");
+                    if (!keepScreenAwake || document.visibilityState !== "visible") {
+                        await lock.release();
+                        return;
+                    }
+                    screenWakeLock = lock;
+                    wakeLockMessage = "Screen will stay awake while Covey is visible.";
+                    lock.addEventListener("release", () => {
+                        if (screenWakeLock === lock) screenWakeLock = null;
+                        wakeLockMessage = keepScreenAwake
+                            ? "Screen wake lock was released by the device."
+                            : "";
+                        renderWakeLockSettings();
+                    });
+                } catch (error) {
+                    wakeLockMessage =
+                        "Could not keep the screen awake. Check browser or battery settings.";
+                }
+                renderWakeLockSettings();
+            }
+            async function updateScreenWakeLock() {
+                if (keepScreenAwake) {
+                    await requestScreenWakeLock();
+                    return;
+                }
+                wakeLockMessage = "";
+                const lock = screenWakeLock;
+                screenWakeLock = null;
+                if (lock && !lock.released) await lock.release();
+                renderWakeLockSettings();
+            }
             // Keep connection and preview-mode feedback in every status region.
             const status = (m) => {
                 const t =
@@ -426,19 +473,11 @@
                           [event.t, event.notes].filter(Boolean).join("\n"),
                       );
             }
-            const personFilterKey = (person) =>
-                person.id ? "person:" + person.id : "member:" + person.n;
             const eventMemberName = (event) => {
                 const assigned = peopleForEvent(event);
                 return assigned.length
                     ? assigned.map((person) => person.name).join(", ")
                     : event.m || "Family";
-            };
-            const eventFilterKeys = (event) => {
-                const assigned = peopleForEvent(event);
-                return assigned.length
-                    ? assigned.map(personFilterKey)
-                    : ["member:" + eventMemberName(event)];
             };
             const eventDisplayTitle = (event) => {
                 const assigned = peopleForEvent(event),
@@ -1839,11 +1878,7 @@
                         if (custom && hide["calendar:" + e.calendarId]) return false;
                         if (!custom && K[e.kind] && hide[e.kind]) return false;
                         if (!custom && !K[e.kind] && hide.event) return false;
-                        return (
-                            e.kind !== "event" ||
-                            filt === null ||
-                            eventFilterKeys(e).includes(filt)
-                        );
+                        return true;
                     },
                     on = (e, k) => e.d === k && vis(e);
                 $("vm").className =
@@ -1953,6 +1988,7 @@
                     renderTheme();
                     renderTimeFormat();
                     renderWeekHours();
+                    renderWakeLockSettings();
                     renderTodaySettings();
                 }
                 $("sheet").classList.toggle("hidden", !sheet);
@@ -2448,7 +2484,6 @@
                     );
                     people = result.people;
                     selectedPersonIds.delete(person.id);
-                    if (filt === "person:" + person.id) filt = null;
                     syncTitlePeople($("title").value);
                     renderWhoOptions();
                     saveSet();
@@ -2552,55 +2587,6 @@
                     .forEach((calendar) => addRow(calendar, true));
                 $("calendar-add-section").style.display = demo ? "none" : "";
                 renderPeopleAdmin();
-                const filterMembers = [...M.filter((member) => member.on), ...people];
-                $("peoplewrap").style.display = filterMembers.length > 1 ? "" : "none";
-                const pp = $("people");
-                pp.innerHTML = "";
-                if (filterMembers.length > 1) {
-                    const all = el(
-                        "button",
-                        "h-9 px-3 rounded-full border text-sm font-semibold " +
-                            (filt === null
-                                ? "bg-accent text-on border-accent"
-                                : "border-line"),
-                        "All",
-                    );
-                    all.setAttribute("aria-pressed", filt === null);
-                    all.onclick = () => {
-                        filt = null;
-                        saveSet();
-                        render();
-                    };
-                    pp.append(all);
-                    filterMembers.forEach((member) => {
-                        const key = personFilterKey(member),
-                            isPerson = !!member.id,
-                            button = el(
-                                "button",
-                                "h-9 px-3 inline-flex items-center gap-1.5 rounded-full border text-sm font-semibold " +
-                                    (filt === key
-                                        ? "border-accent ring-2 ring-accent"
-                                        : "border-line"),
-                            );
-                        button.setAttribute("aria-pressed", filt === key);
-                        if (isPerson) {
-                            button.append(
-                                avatarNode(member, 22),
-                                el("span", null, member.name),
-                            );
-                        } else {
-                            button.textContent = member.n;
-                            button.style.background = member.c;
-                            button.style.color = INK;
-                        }
-                        button.onclick = () => {
-                            filt = filt === key ? null : key;
-                            saveSet();
-                            render();
-                        };
-                        pp.append(button);
-                    });
-                }
                 renderCalendarPage();
             }
             function renderTheme() {
@@ -3041,6 +3027,11 @@
                 setOpen = true;
                 render();
             };
+            $("keep-screen-awake").onchange = (event) => {
+                keepScreenAwake = event.target.checked;
+                saveSet();
+                updateScreenWakeLock();
+            };
             $("today-enabled").onchange = (event) => {
                 todayViewEnabled = event.target.checked;
                 saveSet();
@@ -3135,8 +3126,13 @@
                     18,
                 );
             });
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible")
+                    requestScreenWakeLock();
+            });
             addEventListener("resize", render);
             addEventListener("load", render);
+            addEventListener("load", requestScreenWakeLock);
             $("tg").addEventListener("scroll", () => {
                 if (suppressScrollEvents) return;
                 armIdleReset();
@@ -3162,12 +3158,6 @@
                         people = c.people || [];
                         syncTitlePeople($("title").value);
                         renderWhoOptions();
-                        if (
-                            filt &&
-                            filt.startsWith("person:") &&
-                            !people.some((person) => filt === "person:" + person.id)
-                        )
-                            filt = null;
                         render();
                     })
                     .catch(() => {});
