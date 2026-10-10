@@ -203,9 +203,21 @@ a:focus-visible {
   position: relative;
   z-index: 0;
   padding: clamp(0.75rem, 1.7vw, 1.5rem);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1), transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.calendar-atmosphere {
+.app-loading #app-shell {
+  opacity: 0;
+  transform: scale(0.992);
+}
+
+.app-loading.app-revealing #app-shell {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.calendar-atmosphere,
+.splash-atmosphere {
   position: fixed;
   inset: -22%;
   z-index: 0;
@@ -214,14 +226,16 @@ a:focus-visible {
   pointer-events: none;
 }
 
-.calendar-atmosphere span {
+.calendar-atmosphere span,
+.splash-atmosphere span {
   position: absolute;
   border-radius: 50%;
   filter: blur(92px);
   will-change: transform;
 }
 
-.calendar-atmosphere span:nth-child(1) {
+.calendar-atmosphere span:nth-child(1),
+.splash-atmosphere span:nth-child(1) {
   top: -22%;
   left: -4%;
   width: 62%;
@@ -230,7 +244,8 @@ a:focus-visible {
   animation: ambient-flow-a 44s ease-in-out infinite alternate;
 }
 
-.calendar-atmosphere span:nth-child(2) {
+.calendar-atmosphere span:nth-child(2),
+.splash-atmosphere span:nth-child(2) {
   top: 8%;
   right: -4%;
   width: 55%;
@@ -239,7 +254,8 @@ a:focus-visible {
   animation: ambient-flow-b 52s ease-in-out infinite alternate;
 }
 
-.calendar-atmosphere span:nth-child(3) {
+.calendar-atmosphere span:nth-child(3),
+.splash-atmosphere span:nth-child(3) {
   bottom: -38%;
   left: 24%;
   width: 58%;
@@ -248,7 +264,8 @@ a:focus-visible {
   animation: ambient-flow-c 58s ease-in-out infinite alternate;
 }
 
-.calendar-grain {
+.calendar-grain,
+.splash-grain {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -817,13 +834,60 @@ input, select {
   user-select: text;
 }
 
-/* Static launch branding with motion reserved for the loading indicator. */
+/* The launch screen shares the live Ambient canvas and adapts its branding to
+   the saved palette before the application module loads. */
+#splash {
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--ambient-base, var(--bg)) !important;
+  opacity: 1;
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#splash.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-content {
+  position: relative;
+  z-index: 1;
+  transition: opacity 700ms ease, transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#splash.is-leaving .splash-content {
+  opacity: 0;
+  transform: scale(1.035);
+}
+
+.splash-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--ambient-ink, var(--ink));
+  animation: splash-breathe 2.1s ease-in-out infinite;
+}
+
+.splash-logo svg {
+  width: clamp(3.25rem, 7vw, 4.3rem);
+  height: auto;
+  flex: 0 0 auto;
+  fill: var(--ambient-accent, var(--accent));
+}
+
+.splash-logo span {
+  font-size: clamp(3.2rem, 7vw, 4.6rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
 .splash-loader {
   width: 4rem;
   height: 3px;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(43 38 34 / 15%);
+  background: color-mix(in srgb, var(--ambient-ink, var(--ink)) 15%, transparent);
 }
 
 .splash-loader span {
@@ -831,7 +895,7 @@ input, select {
   width: 45%;
   height: 100%;
   border-radius: inherit;
-  background: #c8553d;
+  background: var(--ambient-accent, var(--accent));
   animation: splash-loading 1.2s ease-in-out infinite;
 }
 
@@ -840,7 +904,22 @@ input, select {
   100% { transform: translateX(230%); }
 }
 
+@keyframes splash-breathe {
+  0%, 100% { opacity: 0.9; transform: scale(0.99); }
+  50% { opacity: 1; transform: scale(1.018); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  #app-shell,
+  #splash,
+  .splash-content {
+    transition: none;
+  }
+
+  .splash-logo {
+    animation: none;
+  }
+
   .splash-loader span {
     animation: none;
     width: 100%;
@@ -1244,6 +1323,6 @@ body.chrome-idle .idle-fade {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-drift span,.ambient-pulse,.calendar-atmosphere span { animation:none !important; }
+  .ambient-drift span,.ambient-pulse,.calendar-atmosphere span,.splash-atmosphere span { animation:none !important; }
   .ambient-pane { transition:none !important; }
 }

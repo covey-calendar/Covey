@@ -173,16 +173,30 @@
                 return i < 0 ? M.length - 1 : i;
             };
             const $ = (id) => document.getElementById(id);
-            const SPLASH_MIN_MS = 700; // keep the splash visible at least this long, even if data loads instantly
+            const SPLASH_MIN_MS = 900; // allow the launch mark one calm breath before revealing the calendar
             const splashStart = Date.now();
             function hideSplash() {
                 const s = $("splash");
-                if (!s) return;
+                if (!s || s.dataset.leaving === "true") return;
+                s.dataset.leaving = "true";
                 const wait = Math.max(
                     0,
                     SPLASH_MIN_MS - (Date.now() - splashStart),
                 );
-                setTimeout(() => s.remove(), wait);
+                setTimeout(() => {
+                    const reducedMotion = window.matchMedia(
+                        "(prefers-reduced-motion: reduce)",
+                    ).matches;
+                    document.body.classList.add("app-revealing");
+                    s.classList.add("is-leaving");
+                    setTimeout(() => {
+                        s.remove();
+                        document.body.classList.remove(
+                            "app-loading",
+                            "app-revealing",
+                        );
+                    }, reducedMotion ? 0 : 900);
+                }, wait);
             }
             setTimeout(hideSplash, 8000); // safety net in case the initial load never settles
             const pad = (n) => String(n).padStart(2, "0");

@@ -138,10 +138,13 @@
                 };
                 // Apply a palette and mode directly to the document root.
                 function apply(p, m) {
-                    var t = T[T.hasOwnProperty(p) ? p : "sand"][m],
+                    p = T.hasOwnProperty(p) ? p : "sand";
+                    var t = T[p][m],
                         r = document.documentElement;
                     for (var k in t) r.style.setProperty("--" + k, t[k]);
                     r.dataset.theme = m;
+                    r.dataset.ambientTheme = p;
+                    r.dataset.ambientMode = m;
                 }
                 function mm(x) {
                     var a = x.split(":");
