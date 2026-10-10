@@ -49,6 +49,13 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* The calendar shell is mounted inside this component root. Keep the height
+   chain definite so its flex child can fill the viewport and own scrolling. */
+#app-root {
+  height: 100%;
+  min-height: 0;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;

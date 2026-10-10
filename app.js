@@ -982,6 +982,7 @@
             }
             function closeTodayOverlay(dismiss = false) {
                 if (!todayOverlayOpen) return;
+                if (dismiss) ambientReadyAt = Date.now() + AMBIENT_IDLE_MS;
                 clearTimeout(todayWeatherTransitionTimer);
                 todayWeatherTransitionTimer = null;
                 todayWeatherTransitioning = false;
@@ -1727,14 +1728,10 @@
                 }, CHROME_IDLE_MS);
             }
             function noteUserActivity(event) {
-                if (
-                    todayOverlayOpen &&
-                    !todayOverlayOpen.preview &&
-                    event?.type === "pointermove"
-                )
-                    return;
-                if (todayOverlayOpen && !todayOverlayOpen.preview)
-                    closeTodayOverlay(false);
+                // Glance is an interactive surface. General activity should not
+                // dismiss it; only its explicit Open calendar action (or Escape)
+                // leaves the mode.
+                if (todayOverlayOpen) return;
                 ambientReadyAt = Date.now() + AMBIENT_IDLE_MS;
                 wakeChrome();
             }

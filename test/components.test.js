@@ -33,3 +33,10 @@ test("mounts calendar, dialog, and settings components before binding the app", 
     assert.match(app, /mountEventDialogs\(document\.getElementById\(["']dialogs-root["']\)\)/);
     assert.match(app, /mountSettingsDialog\(document\.getElementById\(["']settings-root["']\)\)/);
 });
+
+test("keeps the mounted calendar root at full viewport height", () => {
+    const styles = read("style.css");
+
+    assert.match(styles, /#app-root\s*\{[^}]*height:\s*100%/s);
+    assert.match(styles, /#app-root\s*\{[^}]*min-height:\s*0/s);
+});
