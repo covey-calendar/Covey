@@ -409,6 +409,8 @@ a:focus-visible {
   background: color-mix(in srgb, var(--ink) 38%, transparent) !important;
 }
 
+#settings { z-index: 70; }
+
 #sheet > div,
 #settings > div,
 #event-detail > section {

@@ -1157,14 +1157,16 @@
                 const overlay = $("today-overlay");
                 const active = todayOverlayOpen;
                 overlay.classList.toggle("hidden", !active);
-                overlay.setAttribute("aria-hidden", String(!active));
-                if (active && !overlay.contains(document.activeElement))
+                overlay.inert = !!active && setOpen;
+                overlay.setAttribute("aria-hidden", String(!active || setOpen));
+                if (active && !setOpen && !overlay.contains(document.activeElement))
                     overlay.focus({ preventScroll: true });
                 ["app-shell", "addbtn", "sheet", "settings", "event-detail"].forEach(
                     (id) => {
                         const layer = $(id);
-                        layer.inert = !!active;
-                        if (active) layer.setAttribute("aria-hidden", "true");
+                        const blocked = !!active && !(id === "settings" && setOpen);
+                        layer.inert = blocked;
+                        if (blocked) layer.setAttribute("aria-hidden", "true");
                         else layer.removeAttribute("aria-hidden");
                     },
                 );
@@ -1452,7 +1454,6 @@
                 openSettings.type = "button";
                 openSettings.insertAdjacentHTML("afterbegin", ic("settings", 17));
                 openSettings.onclick = () => {
-                    closeTodayOverlay(false);
                     setTab = "appearance";
                     setOpen = true;
                     render();

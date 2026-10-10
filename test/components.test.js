@@ -98,5 +98,10 @@ test("keeps theme controls in settings and exposes settings from Glance", () => 
     assert.match(settings, /id=["']darkmode["']/);
     assert.match(settings, /id=["']autosw["']/);
     assert.match(app, /el\("button", "ambient-settings", "Settings"\)/);
-    assert.match(app, /setTab = "appearance";[\s\S]*?setOpen = true;/);
+    assert.match(
+        app,
+        /openSettings\.onclick = \(\) => \{\s*setTab = "appearance";\s*setOpen = true;\s*render\(\);/,
+    );
+    assert.match(app, /overlay\.inert = !!active && setOpen/);
+    assert.match(read("style.css"), /#settings\s*\{\s*z-index:\s*70/);
 });
