@@ -22,7 +22,7 @@ const event = (title, date, start, end) => ({
     ...(end ? { te: end } : {}),
 });
 
-test("selects ambient periods at their boundaries", () => {
+test("selects Glance periods at their boundaries", () => {
     assert.equal(ambientPeriod(at(5, 59)), "night");
     assert.equal(ambientPeriod(at(6)), "morning");
     assert.equal(ambientPeriod(at(9)), "day");
@@ -84,7 +84,7 @@ test("prioritizes current, upcoming, all-day, and tomorrow events for Glance", (
     );
 });
 
-test("maps every ambient event type to a restrained label and icon", () => {
+test("maps every Glance event type to a restrained label and icon", () => {
     assert.deepEqual(ambientEventKind({ kind: "event" }), {
         key: "event",
         label: "Event",
@@ -95,7 +95,7 @@ test("maps every ambient event type to a restrained label and icon", () => {
     assert.equal(ambientEventKind({ calendarId: "sports" }).label, "Event");
 });
 
-test("exposes weather navigation states and all Covey ambient themes", () => {
+test("exposes weather navigation states and all Covey Glance themes", () => {
     assert.equal(ambientWeatherState({ enabled: false }), "off");
     assert.equal(ambientWeatherState({ enabled: true, location: "" }), "needs-location");
     assert.equal(
@@ -121,7 +121,7 @@ test("exposes weather navigation states and all Covey ambient themes", () => {
     ]);
 });
 
-test("defines light and dark ambient surfaces with reduced-motion fallbacks", () => {
+test("defines light and dark Glance surfaces with reduced-motion fallbacks", () => {
     const css = readFileSync(new URL("../style.css", import.meta.url), "utf8");
     AMBIENT_THEME_NAMES.forEach((theme) => {
         assert.match(css, new RegExp(`data-ambient-theme=["']${theme}["']\\]\\[data-ambient-mode=["']light["']`));
@@ -131,7 +131,7 @@ test("defines light and dark ambient surfaces with reduced-motion fallbacks", ()
     assert.match(css, /\.ambient-drift span,[^}]*animation:none !important/s);
 });
 
-test("exposes only one ambient surface to assistive technology", () => {
+test("exposes only one Glance surface to assistive technology", () => {
     assert.deepEqual(ambientLayerState(false), {
         view: "glance",
         briefingHidden: false,
@@ -144,7 +144,7 @@ test("exposes only one ambient surface to assistive technology", () => {
     });
 });
 
-test("uses a full-pane push over one persistent ambient background", () => {
+test("uses a full-pane push over one persistent Glance background", () => {
     const css = readFileSync(new URL("../style.css", import.meta.url), "utf8");
     assert.match(
         css,

@@ -203,7 +203,7 @@ export function mountSettingsDialog(root) {
                             <div class="settings-group mt-3">
                                 <div class="settings-setting-row">
                                     <span class="settings-setting-copy">
-                                        <span id="ambient-mode-label" class="settings-setting-label">Ambient mode</span>
+                                        <span id="ambient-mode-label" class="settings-setting-label">Glance mode</span>
                                         <span class="settings-setting-description">Show a glanceable family briefing when Covey is idle.</span>
                                     </span>
                                     <span class="settings-actions">

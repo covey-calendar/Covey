@@ -859,7 +859,7 @@ input, select {
   user-select: text;
 }
 
-/* The launch screen shares the live Ambient canvas and adapts its branding to
+/* The launch screen shares the live Glance canvas and adapts its branding to
    the saved palette before the application module loads. */
 #splash {
   isolation: isolate;
@@ -951,7 +951,7 @@ input, select {
   }
 }
 
-/* Ambient mode: fade the nav chrome and add button out after a period of no
+/* Glance mode: fade the nav chrome and add button out after a period of no
    interaction, leaving just the clock. Any tap/click/mouse move/key/scroll
    brings it back. */
 .idle-fade {
@@ -1193,7 +1193,7 @@ body.chrome-idle .idle-fade {
   }
 }
 
-/* Glance ambient surface. Theme variables are intentionally separate from the
+/* Glance surface. Theme variables are intentionally separate from the
    calendar palette so translucent layers retain contrast in both modes. */
 .ambient-page {
   --ambient-ink: #f8f2eb;

@@ -1448,7 +1448,7 @@
                 const openCalendar = el("button", "ambient-open-calendar", "Open calendar");
                 openCalendar.id = "today-overlay-close";
                 openCalendar.type = "button";
-                openCalendar.setAttribute("aria-label", "Open calendar and leave ambient mode");
+                openCalendar.setAttribute("aria-label", "Open calendar and leave Glance mode");
                 openCalendar.insertAdjacentHTML("afterbegin", ic("calendar-days", 17));
                 openCalendar.onclick = () => closeTodayOverlay(true);
                 footer.append(sync, openCalendar);
@@ -1490,9 +1490,9 @@
                         el("p", null, weatherState === "error"
                             ? todayWeatherMessage
                             : weatherState === "off"
-                              ? "Turn weather on in Ambient settings."
+                              ? "Turn weather on in Glance settings."
                               : weatherState === "needs-location"
-                                ? "Add a city or postal code in Ambient settings."
+                                ? "Add a city or postal code in Glance settings."
                                 : "The local forecast will appear shortly."),
                     );
                     const stateAction = el("button", "ambient-weather-action", weatherState === "error" ? "Try again" : "Open weather settings");
@@ -2436,7 +2436,7 @@
                             calendars: "Calendars",
                             people: "People",
                             view: "View",
-                            today: "Ambient",
+                            today: "Glance",
                             appearance: "Appearance",
                             about: "About",
                         })[setTab];
@@ -2458,7 +2458,7 @@
                     ["calendars", "Calendars", "calendar-days", "Manage"],
                     ["people", "People", "users", "Manage"],
                     ["view", "View", "columns-3", "Preferences"],
-                    ["today", "Ambient", "sun", "Preferences"],
+                    ["today", "Glance", "sun", "Preferences"],
                     ["appearance", "Appearance", "settings", "Preferences"],
                     ["about", "About", "heart", "Covey"],
                 ];
