@@ -1,3 +1,14 @@
+            import {
+                ambientEventKind,
+                ambientLayerState,
+                ambientPeriod,
+                ambientWeatherState,
+                classifyAmbientEvents,
+                localDateKey,
+                minutesUntil,
+                selectAmbientFocus,
+            } from "./ambient.js";
+
             /*
              * Covey browser application.
              *
@@ -12,14 +23,20 @@
             const P = {
                 "chevron-left": '<path d="m15 18-6-6 6-6"/>',
                 "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+                "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+                "arrow-left": '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+                check: '<path d="m20 6-11 11-5-5"/>',
+                umbrella: '<path d="M22 12a10.06 10.06 0 0 0-20 0Z"/><path d="M12 12v8a2 2 0 0 0 4 0"/>',
+                wind: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8.6A2.5 2.5 0 1 1 19 13H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+                sunset: '<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
                 sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
                 cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
-                "cloud-sun": '<path d="M12 2v2"/><path d="m4.93 4.93 1.42 1.42"/><path d="M20 12h2"/><path d="m19.07 4.93-1.42 1.42"/><path d="M16 6a4 4 0 0 0-7.7 1.5"/><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+                "cloud-sun": '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.95 12.65a4 4 0 0 0-5.93-4.13"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>',
                 "cloud-moon": '<path d="M19.5 13.5A7 7 0 0 1 10.5 4.5 7 7 0 1 0 19.5 13.5Z"/><path d="M17.5 21H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
                 "cloud-fog": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M3 19h18"/><path d="M5 22h14"/>',
                 "cloud-drizzle": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 19v1"/><path d="M12 19v1"/><path d="M16 19v1"/>',
                 "cloud-rain": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m8 19-1 2"/><path d="m16 19-1 2"/><path d="m12 20-1 2"/>',
-                "cloud-sun-rain": '<path d="M12 2v2"/><path d="m4.93 4.93 1.42 1.42"/><path d="M20 12h2"/><path d="m19.07 4.93-1.42 1.42"/><path d="M16 6a4 4 0 0 0-7.7 1.5"/><path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m8 19-1 2"/><path d="m16 19-1 2"/><path d="m12 20-1 2"/>',
+                "cloud-sun-rain": '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.95 12.65a4 4 0 0 0-5.93-4.13"/><path d="M13 18H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/><path d="m8 21-1 2"/><path d="m16 21-1 2"/><path d="m12 21-1 2"/>',
                 "cloud-snow": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 19v.01"/><path d="M12 21v.01"/><path d="M16 19v.01"/>',
                 "cloud-lightning": '<path d="M17.5 15H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m13 15-3 5h4l-2 4"/>',
                 moon: '<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>',
@@ -75,11 +92,11 @@
             // Only entries with on:true appear as filters and in the "who" picker.
             // The others are kept (they still color older events) so a person can be re-added by setting on:true.
             const M = [
-                { n: "Parent 1", c: "#f8c8c0", d: "#b8503f", on: false },
-                { n: "Parent 2", c: "#bfd7f5", d: "#3b6fb0", on: false },
-                { n: "Kid 1", c: "#c6e8cf", d: "#3f8a5b", on: false },
-                { n: "Kid 2", c: "#fbe3a6", d: "#a7791b", on: false },
-                { n: "Family", c: "#dccff0", d: "#6c4fa3", on: true },
+                { n: "Parent 1", c: "#ffdcd6", d: "#9a5144", on: false },
+                { n: "Parent 2", c: "#dce6ff", d: "#405a90", on: false },
+                { n: "Kid 1", c: "#d9f3e7", d: "#356653", on: false },
+                { n: "Kid 2", c: "#fff0b8", d: "#755b1e", on: false },
+                { n: "Family", c: "#eadffc", d: "#5f498e", on: true },
             ];
             const AVATAR_EMOJI = {
                 person: "🙂",
@@ -95,16 +112,15 @@
                 { name: "Robin", src: "/images/blue-jay.png" },
             ];
 
-            const INK = "#2b2622";
             const CALENDAR_COLORS = {
-                coral: { label: "Coral", bg: "#f8c8c0", fg: "#b8503f" },
-                blue: { label: "Blue", bg: "#bfd7f5", fg: "#3b6fb0" },
-                green: { label: "Green", bg: "#c6e8cf", fg: "#3f8a5b" },
-                amber: { label: "Amber", bg: "#fbe3a6", fg: "#a7791b" },
-                violet: { label: "Violet", bg: "#dccff0", fg: "#6c4fa3" },
-                teal: { label: "Teal", bg: "#bceae3", fg: "#167c72" },
-                rose: { label: "Rose", bg: "#f5c9dc", fg: "#a7426b" },
-                slate: { label: "Slate", bg: "#dce3eb", fg: "#516174" },
+                coral: { label: "Coral", bg: "#ffdcd6", fg: "#9a5144" },
+                blue: { label: "Blue", bg: "#dce6ff", fg: "#405a90" },
+                green: { label: "Green", bg: "#d9f3e7", fg: "#356653" },
+                amber: { label: "Amber", bg: "#fff0b8", fg: "#755b1e" },
+                violet: { label: "Violet", bg: "#eadffc", fg: "#5f498e" },
+                teal: { label: "Teal", bg: "#d5f3ee", fg: "#28695f" },
+                rose: { label: "Rose", bg: "#f8dce9", fg: "#824463" },
+                slate: { label: "Slate", bg: "#e8edf5", fg: "#50596d" },
             };
             const CALENDAR_ICON_LABELS = {
                 calendar: "Calendar",
@@ -121,14 +137,14 @@
             const K = {
                 reminder: {
                     n: "Reminders",
-                    c: "#e3e8ef",
-                    d: "#64748b",
+                    c: "#e9edf6",
+                    d: "#505a70",
                     i: "bell",
                 },
                 dinner: {
                     n: "Dinner",
-                    c: "#fcdcb8",
-                    d: "#b5651d",
+                    c: "#ffe7c7",
+                    d: "#80501f",
                     i: "utensils",
                 },
             };
@@ -220,7 +236,6 @@
                 compactWeek = false,
                 keepScreenAwake = false,
                 todayViewEnabled = true,
-                todayDismissed = [],
                 todayWeatherEnabled = true,
                 todayWeatherLocation = "",
                 todayTemperatureUnit = "F";
@@ -254,8 +269,6 @@
                     todayWeatherLocation = st.todayWeatherLocation.slice(0, 100);
                 if (["F", "C"].includes(st.todayTemperatureUnit))
                     todayTemperatureUnit = st.todayTemperatureUnit;
-                if (Array.isArray(st.todayDismissed))
-                    todayDismissed = st.todayDismissed.filter((key) => typeof key === "string");
             } catch (e) {}
             try {
                 const mo = localStorage.getItem("gaggle-theme");
@@ -268,6 +281,7 @@
             let calendarConfigs = [],
                 addCalendarColor = "teal",
                 addCalendarIcon = "calendar",
+                addCalendarPickerOpen = null,
                 calendarFormOpen = false,
                 calendarSaving = false,
                 personFormOpen = false,
@@ -292,6 +306,9 @@
                 todayOverlayOpen = null,
                 todayOverlaySignature = "",
                 todayReturnFocus = null,
+                todayWeatherPanelOpen = false,
+                todayWeatherTransitioning = false,
+                todayWeatherTransitionTimer = null,
                 todayWeather = null,
                 todayWeatherRequestDate = "",
                 todayWeatherStatus = "idle",
@@ -302,6 +319,10 @@
                 todayEventCache = [],
                 todayEventsLoadingFor = "",
                 todayEventsError = "",
+                tomorrowEventCacheDate = "",
+                tomorrowEventCache = [],
+                tomorrowEventsLoadingFor = "",
+                tomorrowEventsError = "",
                 setOpen = false,
                 setTab = "calendars";
             let screenWakeLock = null,
@@ -334,7 +355,6 @@
                             compactWeek,
                             keepScreenAwake,
                             todayViewEnabled,
-                            todayDismissed,
                             todayWeatherEnabled,
                             todayWeatherLocation,
                             todayTemperatureUnit,
@@ -368,12 +388,10 @@
                         return;
                     }
                     screenWakeLock = lock;
-                    wakeLockMessage = "Screen will stay awake while Covey is visible.";
+                    wakeLockMessage = "";
                     lock.addEventListener("release", () => {
                         if (screenWakeLock === lock) screenWakeLock = null;
-                        wakeLockMessage = keepScreenAwake
-                            ? "Screen wake lock was released by the device."
-                            : "";
+                        wakeLockMessage = "";
                         renderWakeLockSettings();
                     });
                 } catch (error) {
@@ -498,7 +516,7 @@
             function avatarNode(person, size = 24) {
                 const avatar = el(
                     "span",
-                    "inline-grid place-items-center overflow-hidden rounded-full shrink-0 bg-accent text-on font-semibold",
+                    "inline-grid place-items-center overflow-hidden rounded-full shrink-0 bg-accent text-on font-medium",
                 );
                 avatar.style.width = size + "px";
                 avatar.style.height = size + "px";
@@ -714,6 +732,8 @@
             };
             function paint() {
                 GT.apply(pal, eff());
+                document.body.dataset.ambientTheme = pal;
+                document.body.dataset.ambientMode = eff();
                 icon();
             }
             $("theme").onclick = () => {
@@ -749,23 +769,26 @@
             function renderTodaySettings() {
                 $("today-enabled").checked = todayViewEnabled;
                 $("today-preview").disabled = !todayViewEnabled;
-                $("today-preview").classList.toggle("opacity-50", !todayViewEnabled);
+                document.querySelectorAll("[data-ambient-preview]").forEach((button) => {
+                    button.disabled = !todayViewEnabled;
+                    button.classList.toggle("opacity-50", !todayViewEnabled);
+                });
                 $("today-weather-enabled").checked = todayWeatherEnabled;
                 $("today-temperature-unit").value = todayTemperatureUnit;
                 if (document.activeElement !== $("today-weather-location"))
                     $("today-weather-location").value = todayWeatherLocation;
+                $("today-temperature-unit").disabled = !todayWeatherEnabled;
+                $("today-weather-location").disabled = !todayWeatherEnabled;
                 $("today-weather-location-save").disabled =
+                    !todayWeatherEnabled ||
                     !$("today-weather-location").value.trim();
-                $("today-weather-location-save").classList.toggle(
-                    "opacity-50",
-                    $("today-weather-location-save").disabled,
+                $("today-weather-fields").style.opacity = todayWeatherEnabled
+                    ? "1"
+                    : ".55";
+                $("today-weather-fields").setAttribute(
+                    "aria-disabled",
+                    String(!todayWeatherEnabled),
                 );
-            }
-            function scheduledTodaySlot(now) {
-                const minutes = now.getHours() * 60 + now.getMinutes();
-                if (minutes >= 6 * 60 && minutes < 9 * 60) return "morning";
-                if (minutes >= 16 * 60 && minutes < 18 * 60) return "evening";
-                return null;
             }
             function ensureTodayEvents(date) {
                 if (demo) {
@@ -803,6 +826,47 @@
                         renderTodayOverlay(true);
                     });
             }
+            function ensureTomorrowEvents(date) {
+                if (demo) {
+                    tomorrowEventCacheDate = date;
+                    tomorrowEventCache = local.filter((event) => event.d === date);
+                    tomorrowEventsError = "";
+                    return;
+                }
+                const month = mkey(parse(date));
+                if (loadedMonths.includes(month)) {
+                    tomorrowEventCacheDate = date;
+                    tomorrowEventCache = ev.filter((event) => event.d === date);
+                    tomorrowEventsLoadingFor = "";
+                    tomorrowEventsError = "";
+                    return;
+                }
+                if (
+                    tomorrowEventCacheDate === date ||
+                    tomorrowEventsLoadingFor === date
+                )
+                    return;
+                tomorrowEventsLoadingFor = date;
+                tomorrowEventsError = "";
+                api("GET", "/api/events?month=" + month)
+                    .then((events) => {
+                        if (tomorrowEventsLoadingFor !== date) return;
+                        tomorrowEventCacheDate = date;
+                        tomorrowEventCache = events.filter(
+                            (event) => event.d === date,
+                        );
+                        tomorrowEventsLoadingFor = "";
+                        tomorrowEventsError = "";
+                        renderTodayOverlay(true);
+                    })
+                    .catch((error) => {
+                        if (tomorrowEventsLoadingFor !== date) return;
+                        tomorrowEventsLoadingFor = "";
+                        tomorrowEventsError =
+                            error.message || "Could not load tomorrow’s events.";
+                        renderTodayOverlay(true);
+                    });
+            }
             function retryTodayEvents() {
                 todayEventCacheDate = "";
                 todayEventsError = "";
@@ -820,10 +884,31 @@
                     })
                     .sort((a, b) => (a.tm || "").localeCompare(b.tm || ""));
             }
+            function visibleTomorrowEvents(date) {
+                return (tomorrowEventCacheDate === date
+                    ? tomorrowEventCache
+                    : []
+                )
+                    .filter((event) => event.d === date)
+                    .filter((event) => {
+                        const custom =
+                            event.calendarId &&
+                            !["event", "reminder", "dinner"].includes(
+                                event.calendarId,
+                            );
+                        if (custom)
+                            return !hide["calendar:" + event.calendarId];
+                        return K[event.kind]
+                            ? !hide[event.kind]
+                            : !hide.event;
+                    })
+                    .sort((a, b) => (a.tm || "").localeCompare(b.tm || ""));
+            }
 
             function openTodayOverlay(slot, preview = false) {
                 if (!todayOverlayOpen) todayReturnFocus = document.activeElement;
                 const date = iso(new Date());
+                todayWeatherPanelOpen = false;
                 todayOverlayOpen = {
                     slot,
                     preview,
@@ -833,16 +918,52 @@
                 renderTodayOverlay(true);
                 $("today-overlay-close").focus();
             }
+            function navigateAmbientWeather(open) {
+                if (!todayOverlayOpen || todayWeatherTransitioning || open === todayWeatherPanelOpen)
+                    return;
+                const overlay = $("today-overlay");
+                const page = overlay.querySelector(".ambient-page");
+                const glance = overlay.querySelector(".ambient-glance");
+                const forecast = overlay.querySelector(".ambient-forecast-view");
+                if (!page || !glance || !forecast) return;
+                todayWeatherTransitioning = true;
+                todayWeatherPanelOpen = open;
+                const source = open ? glance : forecast;
+                const destination = open ? forecast : glance;
+                destination.hidden = false;
+                source.inert = true;
+                destination.inert = true;
+                page.dataset.ambientNavigating = "true";
+                const finish = () => {
+                    clearTimeout(todayWeatherTransitionTimer);
+                    todayWeatherTransitionTimer = null;
+                    source.hidden = true;
+                    source.inert = true;
+                    source.setAttribute("aria-hidden", "true");
+                    destination.hidden = false;
+                    destination.inert = false;
+                    destination.setAttribute("aria-hidden", "false");
+                    page.removeAttribute("data-ambient-navigating");
+                    todayWeatherTransitioning = false;
+                    (open ? $("ambient-weather-back") : $("ambient-weather-open"))?.focus();
+                };
+                if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    page.dataset.ambientView = open ? "forecast" : "glance";
+                    finish();
+                    return;
+                }
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    page.dataset.ambientView = open ? "forecast" : "glance";
+                    todayWeatherTransitionTimer = setTimeout(finish, 380);
+                }));
+            }
             function closeTodayOverlay(dismiss = false) {
                 if (!todayOverlayOpen) return;
-                if (dismiss && !todayOverlayOpen.preview) {
-                    todayDismissed = [
-                        ...todayDismissed.filter((key) => key !== todayOverlayOpen.key),
-                        todayOverlayOpen.key,
-                    ].slice(-14);
-                    saveSet();
-                }
+                clearTimeout(todayWeatherTransitionTimer);
+                todayWeatherTransitionTimer = null;
+                todayWeatherTransitioning = false;
                 todayOverlayOpen = null;
+                todayWeatherPanelOpen = false;
                 todayOverlaySignature = "";
                 renderTodayOverlay(true);
                 const returnFocus = todayReturnFocus;
@@ -851,15 +972,21 @@
             }
             function checkTodayView(now = new Date()) {
                 if (todayOverlayOpen?.preview) return;
-                const slot = todayViewEnabled && !setOpen && !sheet && !detailEvent
-                    ? scheduledTodaySlot(now)
+                const slot =
+                    todayViewEnabled &&
+                    Date.now() >= ambientReadyAt &&
+                    !setOpen &&
+                    !sheet &&
+                    !detailEvent
+                    ? ambientPeriod(now)
                     : null;
-                const key = slot ? iso(now) + ":" + slot : null;
-                if (!slot || todayDismissed.includes(key)) {
+                const key = slot ? localDateKey(now) + ":" + slot : null;
+                if (!slot) {
                     if (todayOverlayOpen) closeTodayOverlay(false);
                     return;
                 }
                 if (todayOverlayOpen?.key !== key) openTodayOverlay(slot);
+                else renderTodayOverlay();
             }
             function formatTodayTemperature(value) {
                 if (!Number.isFinite(value)) return "—";
@@ -902,6 +1029,16 @@
                 if ([95, 96, 99].includes(code)) return "Thunderstorms";
                 return "Current conditions";
             }
+            function weatherConditionTone(code, isDay) {
+                if (!isDay) return "night";
+                if (code === 0) return "sunny";
+                if ([1, 2, 3].includes(code)) return "cloudy";
+                if ([45, 48].includes(code)) return "fog";
+                if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "rain";
+                if ([71, 73, 75, 77, 85, 86].includes(code)) return "snow";
+                if ([95, 96, 99].includes(code)) return "storm";
+                return "cloudy";
+            }
 
             async function loadTodayWeather() {
                 if (
@@ -936,11 +1073,12 @@
                     const query = new URLSearchParams({
                         latitude: String(place.latitude),
                         longitude: String(place.longitude),
-                        current: "temperature_2m,weather_code,is_day",
-                        daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                        current: "temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m",
+                        hourly: "temperature_2m,precipitation_probability,weather_code,is_day",
+                        daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset",
                         temperature_unit: "fahrenheit",
                         timezone: place.timezone || "auto",
-                        forecast_days: "1",
+                        forecast_days: "5",
                     });
                     const response = await fetch(
                         "https://api.open-meteo.com/v1/forecast?" + query,
@@ -961,9 +1099,29 @@
                         temperature: forecast.current?.temperature_2m,
                         code: forecast.current?.weather_code ?? forecast.daily?.weather_code?.[0],
                         isDay: forecast.current?.is_day === 1,
+                        feelsLike: forecast.current?.apparent_temperature,
+                        wind: forecast.current?.wind_speed_10m,
                         high: forecast.daily?.temperature_2m_max?.[0],
                         low: forecast.daily?.temperature_2m_min?.[0],
                         rain: forecast.daily?.precipitation_probability_max?.[0],
+                        sunset: forecast.daily?.sunset?.[0],
+                        hourly: (forecast.hourly?.time || []).map((time, index) => ({
+                            time,
+                            temperature: forecast.hourly?.temperature_2m?.[index],
+                            rain: forecast.hourly?.precipitation_probability?.[index],
+                            code: forecast.hourly?.weather_code?.[index],
+                            isDay: forecast.hourly?.is_day?.[index] === 1,
+                        })),
+                        daily: (forecast.daily?.time || []).map((day, index) => ({
+                            day,
+                            code: forecast.daily?.weather_code?.[index],
+                            high: forecast.daily?.temperature_2m_max?.[index],
+                            low: forecast.daily?.temperature_2m_min?.[index],
+                            rain: forecast.daily?.precipitation_probability_max?.[index],
+                            wind: forecast.daily?.wind_speed_10m_max?.[index],
+                            sunrise: forecast.daily?.sunrise?.[index],
+                            sunset: forecast.daily?.sunset?.[index],
+                        })),
                     };
                     todayWeatherStatus = "ready";
                 } catch (error) {
@@ -983,16 +1141,23 @@
                 const active = todayOverlayOpen;
                 overlay.classList.toggle("hidden", !active);
                 overlay.setAttribute("aria-hidden", String(!active));
-                $("app-shell").inert = !!active;
-                $("addbtn").inert = !!active;
-                $("sheet").inert = !!active;
-                $("settings").inert = !!active;
-                $("event-detail").inert = !!active;
+                if (active && !overlay.contains(document.activeElement))
+                    overlay.focus({ preventScroll: true });
+                ["app-shell", "addbtn", "sheet", "settings", "event-detail"].forEach(
+                    (id) => {
+                        const layer = $(id);
+                        layer.inert = !!active;
+                        if (active) layer.setAttribute("aria-hidden", "true");
+                        else layer.removeAttribute("aria-hidden");
+                    },
+                );
                 if (!active) {
                     todayOverlaySignature = "";
                     return;
                 }
+                if (todayWeatherTransitioning) return;
                 const date = iso(new Date());
+                const tomorrowDate = addDays(date, 1);
                 if (
                     (todayWeather && todayWeather.date !== date) ||
                     (todayWeatherRequestDate && todayWeatherRequestDate !== date)
@@ -1004,16 +1169,30 @@
                     todayWeatherLastRequestAt = 0;
                 }
                 ensureTodayEvents(date);
+                ensureTomorrowEvents(tomorrowDate);
                 const todayEvents = visibleTodayEvents(date);
-                const eveningEvents = todayEvents.filter((event) =>
-                    !event.tm || event.kind === "dinner" ||
-                    Number(event.tm.slice(0, 2)) >= 16 ||
-                    (event.te && Number(event.te.slice(0, 2)) >= 16),
+                const tomorrowEvents = visibleTomorrowEvents(tomorrowDate);
+                const now = new Date();
+                const ambientModel = classifyAmbientEvents(
+                    [...todayEvents, ...tomorrowEvents],
+                    now,
                 );
-                const events = active.slot === "evening" ? eveningEvents : todayEvents;
+                const remainingEvents = [
+                    ...ambientModel.allDay,
+                    ...ambientModel.current,
+                    ...ambientModel.upcoming,
+                ];
+                const events =
+                    active.slot === "morning"
+                        ? todayEvents
+                        : active.slot === "night"
+                          ? tomorrowEvents
+                          : remainingEvents;
                 const signature = JSON.stringify([
                     active.key,
                     date,
+                    now.getHours(),
+                    now.getMinutes(),
                     todayEvents.map((event) => [
                         event.url,
                         event.id,
@@ -1031,6 +1210,16 @@
                     ]),
                     todayEventsLoadingFor === date,
                     todayEventsError,
+                    tomorrowEvents.map((event) => [
+                        event.url,
+                        event.id,
+                        event.t,
+                        event.tm,
+                        event.te,
+                        event.kind,
+                    ]),
+                    tomorrowEventsLoadingFor === tomorrowDate,
+                    tomorrowEventsError,
                     todayWeatherEnabled,
                     todayWeatherLocation,
                     todayTemperatureUnit,
@@ -1045,12 +1234,14 @@
                 overlay.innerHTML = "";
                 overlay.setAttribute("role", "dialog");
                 overlay.setAttribute("aria-modal", "true");
-                overlay.setAttribute("aria-label", active.slot === "morning" ? "Today overview" : "This evening overview");
+                overlay.setAttribute("aria-label", "Family calendar at a glance");
                 overlay.onkeydown = (event) => {
                     if (event.key === "Escape") {
                         event.preventDefault();
                         event.stopPropagation();
-                        closeTodayOverlay(true);
+                        if (todayWeatherTransitioning) return;
+                        if (todayWeatherPanelOpen) navigateAmbientWeather(false);
+                        else closeTodayOverlay(true);
                         return;
                     }
                     if (event.key !== "Tab") return;
@@ -1064,199 +1255,310 @@
                         controls[0].focus();
                     }
                 };
-                const page = el("main", "flex min-h-screen items-center px-4 py-6 sm:px-8 sm:py-12");
-                page.style.paddingTop = "calc(env(safe-area-inset-top, 0px) + 2.5rem)";
-                page.style.paddingBottom = "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)";
-                const content = el("div", "mx-auto w-full max-w-6xl");
-                const header = el("header", "mb-14 flex items-start justify-between gap-4");
-                const heading = el("div", "min-w-0");
-                const now = new Date();
-                const greeting = active.slot === "morning"
-                    ? "Good morning."
-                    : now.getHours() >= 17 ? "Good evening." : "Good afternoon.";
-                heading.append(
-                    el(
-                        "p",
-                        "mb-2 text-base font-medium text-accent",
-                        now.toLocaleDateString(undefined, {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                        }),
-                    ),
-                    el("h1", "text-3xl font-semibold tracking-tight sm:text-6xl", greeting),
-                    el(
-                        "p",
-                        "mt-2 text-base text-mute sm:text-lg",
-                        active.slot === "morning"
-                            ? "Here’s what’s happening today."
-                            : "Here’s what’s happening this evening.",
-                    ),
+                const page = el("main", "ambient-page");
+                const layerState = ambientLayerState(todayWeatherPanelOpen);
+                page.dataset.ambientView = layerState.view;
+                page.dataset.ambientTheme = pal;
+                page.dataset.ambientMode = eff();
+                page.dataset.condition = todayWeather
+                    ? weatherConditionTone(todayWeather.code, todayWeather.isDay)
+                    : "calm";
+                const drift = el("div", "ambient-drift");
+                drift.setAttribute("aria-hidden", "true");
+                drift.append(el("span"), el("span"), el("span"));
+                page.append(drift, el("div", "ambient-grain"));
+                const content = el("div", "ambient-glance ambient-pane");
+                content.hidden = layerState.briefingHidden;
+                content.inert = layerState.briefingHidden;
+                content.setAttribute("aria-hidden", String(layerState.briefingHidden));
+                const header = el("header", "ambient-glance-header");
+                const dateTime = el("div");
+                dateTime.append(
+                    el("p", "ambient-date", now.toLocaleDateString(undefined, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                    })),
+                    el("h1", "ambient-clock", formatTime(now, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                    })),
                 );
-                header.append(heading);
-                const close = el(
-                    "button",
-                    "h-11 w-11 shrink-0 grid place-items-center rounded-full bg-card text-mute",
+                const weatherState = ambientWeatherState({
+                    enabled: todayWeatherEnabled,
+                    location: todayWeatherLocation,
+                    status: todayWeatherStatus,
+                    weather: todayWeather,
+                });
+                const weatherButton = el("button", "ambient-weather-summary");
+                weatherButton.id = "ambient-weather-open";
+                weatherButton.type = "button";
+                weatherButton.setAttribute("aria-haspopup", "dialog");
+                const weatherIconNode = el("span", "ambient-weather-summary-icon");
+                weatherIconNode.innerHTML = ic(
+                    todayWeather
+                        ? weatherIcon(todayWeather.code, todayWeather.isDay)
+                        : "cloud",
+                    36,
                 );
-                close.id = "today-overlay-close";
-                close.type = "button";
-                close.setAttribute("aria-label", "Dismiss Today view");
-                close.innerHTML = ic("x", 20);
-                close.onclick = () => closeTodayOverlay(true);
-                header.append(close);
-                const columns = el("div", "grid gap-6 lg:grid-cols-[0.85fr_1.15fr]");
-                const weather = el("section", "rounded-2xl bg-card p-5 sm:p-6");
-                const weatherPlace = todayWeather?.location || todayWeatherLocation;
-                weather.append(
-                    el("h2", "text-2xl font-semibold", "Today’s weather"),
-                    el(
-                        "p",
-                        "mt-1 text-mute",
-                        !todayWeatherEnabled
-                            ? "Weather is off in settings"
-                            : weatherPlace || "Set a location in Today settings",
-                    ),
+                const weatherCopy = el("span", "ambient-weather-summary-copy");
+                const weatherPrimary = weatherState === "ready"
+                    ? formatTodayTemperature(todayWeather.temperature)
+                    : weatherState === "loading"
+                      ? "Loading"
+                      : "Weather";
+                const weatherSecondary = weatherState === "ready"
+                    ? weatherDescription(todayWeather.code)
+                    : weatherState === "needs-location"
+                      ? "Choose a location"
+                      : weatherState === "off"
+                        ? "Turned off"
+                        : weatherState === "error"
+                          ? "Forecast unavailable"
+                          : todayWeatherLocation;
+                weatherCopy.append(
+                    el("strong", null, weatherPrimary),
+                    el("small", null, weatherSecondary),
                 );
-                if (todayWeatherEnabled && todayWeatherStatus === "ready" && todayWeather) {
-                    const row = el("div", "mt-5 flex items-center gap-4");
-                    const icon = el("div", "shrink-0 text-accent");
-                    icon.innerHTML = ic(weatherIcon(todayWeather.code, todayWeather.isDay), 52);
-                    const current = el("div", null);
-                    current.append(
-                        el(
-                            "p",
-                            "text-5xl font-semibold",
-                            formatTodayTemperature(todayWeather.temperature),
-                        ),
-                        el("p", "text-lg text-mute", weatherDescription(todayWeather.code)),
-                    );
-                    row.append(icon, current);
-                    weather.append(row);
-                    const detail = [
-                        Number.isFinite(todayWeather.high) ? "High " + formatTodayTemperature(todayWeather.high) : "",
-                        Number.isFinite(todayWeather.low) ? "Low " + formatTodayTemperature(todayWeather.low) : "",
-                        Number.isFinite(todayWeather.rain) ? todayWeather.rain + "% chance of rain" : "",
-                    ].filter(Boolean).join(" · ");
-                    if (detail) weather.append(el("p", "mt-4 text-md text-mute", detail));
+                weatherButton.append(weatherIconNode, weatherCopy);
+                weatherButton.insertAdjacentHTML("beforeend", ic("chevron-right", 18));
+                weatherButton.setAttribute(
+                    "aria-label",
+                    `Open weather forecast: ${weatherPrimary}, ${weatherSecondary}`,
+                );
+                weatherButton.onclick = () => {
+                    navigateAmbientWeather(true);
+                };
+                header.append(dateTime, weatherButton);
+
+                const glanceMain = el("div", "ambient-glance-main");
+                const focusEvent = selectAmbientFocus(ambientModel, active.slot);
+                const focusPanel = el("section", "ambient-next-panel");
+                focusPanel.setAttribute("aria-labelledby", "ambient-next-title");
+                const focusKicker = el("div", "ambient-next-kicker");
+                focusKicker.append(el("span", "ambient-pulse"));
+                let kicker = active.slot === "night" ? "First tomorrow" : "Up next";
+                if (ambientModel.current.includes(focusEvent)) kicker = "Happening now";
+                const remaining = focusEvent ? minutesUntil(focusEvent, now) : null;
+                if (remaining > 0) {
+                    const hours = Math.floor(remaining / 60);
+                    const mins = remaining % 60;
+                    kicker += hours ? ` · in ${hours}h ${mins ? mins + "m" : ""}` : ` · in ${mins}m`;
+                }
+                focusKicker.append(document.createTextNode(kicker));
+                const focusTitle = el(
+                    "h2",
+                    null,
+                    focusEvent?.t || (active.slot === "night" ? "Tomorrow is open" : "A little breathing room"),
+                );
+                focusTitle.id = "ambient-next-title";
+                const focusTime = el(
+                    "p",
+                    "ambient-next-time",
+                    focusEvent
+                        ? focusEvent.tm
+                            ? trange(focusEvent)
+                            : "All day"
+                        : "Nothing else is scheduled.",
+                );
+                focusPanel.append(focusKicker, focusTitle, focusTime);
+                if (focusEvent) {
+                    const kind = ambientEventKind(focusEvent);
+                    const metadata = el("div", "ambient-next-meta");
+                    const kindIcon = el("span", "ambient-kind-icon");
+                    kindIcon.innerHTML = ic(calendarForEvent(focusEvent)?.icon || kind.icon, 17);
+                    const member = eventMemberName(focusEvent);
+                    metadata.append(kindIcon, el("span", null, `${kind.label}${member ? " · " + member : ""}`));
+                    focusPanel.append(metadata);
+                }
+
+                const scheduleEvents = active.slot === "night"
+                    ? tomorrowEvents
+                    : [...ambientModel.allDay, ...ambientModel.current, ...ambientModel.upcoming];
+                const rail = el("aside", "ambient-day-rail");
+                rail.setAttribute("aria-label", active.slot === "night" ? "Tomorrow" : "Rest of today");
+                const railHeading = el("div", "ambient-rail-heading");
+                railHeading.append(
+                    el("h2", null, active.slot === "night" ? "Tomorrow" : "Rest of today"),
+                    el("span", null, `${scheduleEvents.length} ${scheduleEvents.length === 1 ? "plan" : "plans"}`),
+                );
+                rail.append(railHeading);
+                const eventsLoading = active.slot === "night"
+                    ? tomorrowEventsLoadingFor === tomorrowDate
+                    : todayEventsLoadingFor === date;
+                const eventsError = active.slot === "night" ? tomorrowEventsError : todayEventsError;
+                if (!scheduleEvents.length) {
+                    rail.append(el("p", "ambient-empty", eventsLoading
+                        ? "Checking the calendar…"
+                        : eventsError || "Nothing else is planned."));
                 } else {
-                    const message = !todayWeatherEnabled
-                        ? "Turn on weather in Today settings to see a forecast."
-                        : !todayWeatherLocation
-                          ? "Choose a city or postal code in Today settings to see the local forecast."
-                          : todayWeatherStatus === "loading"
-                            ? "Loading forecast for " + todayWeatherLocation + "…"
-                            : todayWeatherMessage || "The local forecast will load automatically.";
-                    weather.append(el("p", "mt-5 text-sm text-mute", message));
-                    if (!todayWeatherEnabled || !todayWeatherLocation) {
-                        const configureWeather = el(
-                            "button",
-                            "mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on",
-                            todayWeatherEnabled ? "Set weather location" : "Weather settings",
+                    scheduleEvents.slice(0, 4).forEach((event) => {
+                        const kind = ambientEventKind(event);
+                        const item = el("article", "ambient-rail-event ambient-kind-" + kind.key);
+                        if (event === focusEvent) item.classList.add("is-next");
+                        item.append(
+                            el("time", null, event.tm ? tfmt(event.tm) : "All day"),
+                            el("strong", null, event.t || "(no title)"),
                         );
-                        configureWeather.type = "button";
-                        configureWeather.onclick = () => {
-                            closeTodayOverlay(false);
-                            setOpen = true;
-                            setTab = "today";
-                            render();
-                            $(todayWeatherEnabled ? "today-weather-location" : "today-weather-enabled").focus();
-                        };
-                        weather.append(configureWeather);
-                    }
-                    if (
-                        todayWeatherEnabled &&
-                        todayWeatherLocation &&
-                        todayWeatherStatus === "error"
-                    ) {
-                        const retryWeather = el("button", "mt-3 text-sm font-semibold text-accent", "Try again");
-                        retryWeather.type = "button";
-                        retryWeather.onclick = loadTodayWeather;
-                        weather.append(retryWeather);
-                    }
-                }
-                if (todayWeather) {
-                    const attribution = el("a", "mt-4 inline-block text-[11px] text-mute underline", "Weather by Open-Meteo");
-                    attribution.href = "https://open-meteo.com/";
-                    attribution.target = "_blank";
-                    attribution.rel = "noopener noreferrer";
-                    weather.append(attribution);
-                }
-                const plans = el("section", "rounded-2xl bg-card p-5 sm:p-6");
-                plans.append(
-                    el("h2", "text-2xl font-semibold", active.slot === "morning" ? "On the calendar" : "This evening"),
-                    el(
-                        "p",
-                        "mt-1 text-base text-mute",
-                        events.length
-                            ? `${events.length} ${events.length === 1 ? "plan" : "plans"}`
-                            : todayEventsLoadingFor === date
-                              ? "Loading today’s calendar"
-                              : todayEventsError
-                                ? "Calendar unavailable"
-                                : "A little breathing room",
-                    ),
-                );
-                if (!events.length) {
-                    plans.append(
-                        el(
-                            "p",
-                            "mt-6 rounded-xl bg-bg p-4 text-sm text-mute",
-                            todayEventsLoadingFor === date
-                                ? "Checking the calendar…"
-                                : todayEventsError
-                                  ? todayEventsError
-                                  : active.slot === "morning"
-                                    ? "Nothing planned today. Enjoy the space."
-                                    : "No evening plans on the calendar.",
-                        ),
-                    );
-                    if (todayEventsError) {
-                        const retry = el("button", "mt-3 text-sm font-semibold text-accent", "Try again");
-                        retry.type = "button";
-                        retry.onclick = retryTodayEvents;
-                        plans.append(retry);
-                    }
-                } else {
-                    const list = el("div", "mt-4 flex flex-col gap-3");
-                    events.forEach((event) => {
-                        const color = sty(event);
-                        const typeLabel = { dinner: "Dinner", reminder: "Reminder" }[event.kind];
-                        const card = el("article", "rounded-xl p-4" + (typeLabel ? "" : " bg-bg"));
-                        card.style.borderLeft = "4px solid " + color.d;
-                        if (typeLabel)
-                            card.style.backgroundColor = "color-mix(in srgb, " + color.c + " 22%, var(--bg))";
-                        const meta = el("div", "flex items-center justify-between gap-2");
-                        if (event.tm || !typeLabel)
-                            meta.append(el("p", "text-base font-semibold text-mute", event.tm ? trange(event) : "All day"));
-                        if (typeLabel) {
-                            const badge = el("span", "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold");
-                            badge.style.color = color.d;
-                            badge.style.backgroundColor = "color-mix(in srgb, " + color.c + " 55%, var(--bg))";
-                            badge.innerHTML = ic(K[event.kind].i, 14);
-                            badge.append(el("span", null, typeLabel));
-                            meta.append(badge);
-                        }
-                        card.append(meta, el("h3", "mt-1 text-xl font-semibold", event.t || "(no title)"));
-                        const assigned = peopleForEvent(event);
-                        const peopleRow = el("div", "mt-3 flex flex-wrap items-center gap-2");
-                        if (assigned.length) {
-                            assigned.forEach((person) => {
-                                const chip = el("span", "inline-flex items-center gap-1.5 rounded-full border border-line bg-card py-1 pl-1 pr-2.5 text-xs font-medium");
-                                chip.append(avatarNode(person, 24), el("span", null, person.name));
-                                peopleRow.append(chip);
-                            });
-                        } else if (!typeLabel) {
-                            peopleRow.append(el("span", "rounded-full border border-line bg-card px-2.5 py-1 text-xs text-mute", eventMemberName(event)));
-                        }
-                        if (assigned.length || !typeLabel) card.append(peopleRow);
-                        list.append(card);
+                        const meta = el("span", "ambient-event-type");
+                        meta.innerHTML = ic(calendarForEvent(event)?.icon || kind.icon, 13);
+                        meta.append(document.createTextNode(`${kind.label} · ${eventMemberName(event)}`));
+                        item.append(meta);
+                        rail.append(item);
                     });
-                    plans.append(list);
+                    if (scheduleEvents.length > 4)
+                        rail.append(el("p", "ambient-more", `+${scheduleEvents.length - 4} more on the calendar`));
                 }
-                columns.append(weather, plans);
-                content.append(header, columns);
-                page.append(content);
+                glanceMain.append(focusPanel, rail);
+                const footer = el("footer", "ambient-glance-footer");
+                const sync = el("span");
+                sync.innerHTML = ic("check", 17);
+                sync.append(document.createTextNode(
+                    demo
+                        ? "Saved on this device"
+                        : syncState === "pending"
+                          ? "Syncing…"
+                          : syncState === "ok"
+                            ? `Synced ${timeAgo(lastSyncAt) || "just now"}`
+                            : lastSyncAt
+                              ? `Offline · synced ${timeAgo(lastSyncAt)}`
+                              : "Calendar unavailable",
+                ));
+                const openCalendar = el("button", "ambient-open-calendar", "Open calendar");
+                openCalendar.id = "today-overlay-close";
+                openCalendar.type = "button";
+                openCalendar.setAttribute("aria-label", "Open calendar and leave ambient mode");
+                openCalendar.insertAdjacentHTML("afterbegin", ic("calendar-days", 17));
+                openCalendar.onclick = () => closeTodayOverlay(true);
+                footer.append(sync, openCalendar);
+                content.append(header, glanceMain, footer);
+
+                const weatherView = el("section", "ambient-forecast-view ambient-pane");
+                weatherView.hidden = layerState.forecastHidden;
+                weatherView.inert = layerState.forecastHidden;
+                weatherView.setAttribute("aria-hidden", String(layerState.forecastHidden));
+                weatherView.setAttribute("aria-labelledby", "ambient-forecast-title");
+                const weatherHeader = el("header", "ambient-forecast-header");
+                const weatherBack = el("button", "ambient-weather-back", "Today");
+                weatherBack.id = "ambient-weather-back";
+                weatherBack.type = "button";
+                weatherBack.insertAdjacentHTML("afterbegin", ic("arrow-left", 17));
+                weatherBack.onclick = () => {
+                    navigateAmbientWeather(false);
+                };
+                const weatherHeading = el("div");
+                weatherHeading.append(
+                    el("p", null, `${todayWeather?.location || todayWeatherLocation || "Local weather"} · ${now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}`),
+                    el("h2", null, weatherState === "ready" ? weatherDescription(todayWeather.code) : "Weather forecast"),
+                );
+                weatherHeading.querySelector("h2").id = "ambient-forecast-title";
+                const nowWeather = el("div", "ambient-weather-now");
+                if (weatherState === "ready") {
+                    nowWeather.innerHTML = ic(weatherIcon(todayWeather.code, todayWeather.isDay), 48);
+                    nowWeather.append(
+                        el("strong", null, formatTodayTemperature(todayWeather.temperature)),
+                        el("span", null, Number.isFinite(todayWeather.feelsLike) ? `Feels like ${formatTodayTemperature(todayWeather.feelsLike)}` : "Current temperature"),
+                    );
+                }
+                weatherHeader.append(weatherBack, weatherHeading, nowWeather);
+                weatherView.append(weatherHeader);
+                if (weatherState !== "ready") {
+                    const weatherStatePanel = el("div", "ambient-weather-state");
+                    weatherStatePanel.append(
+                        el("h3", null, weatherState === "loading" ? "Loading the forecast" : weatherSecondary),
+                        el("p", null, weatherState === "error"
+                            ? todayWeatherMessage
+                            : weatherState === "off"
+                              ? "Turn weather on in Ambient settings."
+                              : weatherState === "needs-location"
+                                ? "Add a city or postal code in Ambient settings."
+                                : "The local forecast will appear shortly."),
+                    );
+                    const stateAction = el("button", "ambient-weather-action", weatherState === "error" ? "Try again" : "Open weather settings");
+                    stateAction.type = "button";
+                    stateAction.onclick = weatherState === "error"
+                        ? loadTodayWeather
+                        : () => {
+                              closeTodayOverlay(false);
+                              setOpen = true;
+                              setTab = "today";
+                              render();
+                              $(todayWeatherEnabled ? "today-weather-location" : "today-weather-enabled")?.focus();
+                          };
+                    weatherStatePanel.append(stateAction);
+                    weatherView.append(weatherStatePanel);
+                } else {
+                    const forecastLayout = el("div", "ambient-forecast-layout");
+                    const planning = el("section", "ambient-planning-card");
+                    planning.append(el("p", "ambient-weather-label", "Daily outlook"));
+                    const outlook = todayWeather.rain >= 60
+                        ? "Rain is likely today. Plan for wet trips and extra travel time."
+                        : todayWeather.code === 0
+                          ? "Clear conditions make today easy for time outside."
+                          : todayWeather.rain >= 30
+                            ? "A passing shower is possible. Keep a light layer nearby."
+                            : "A comfortable day with changing cloud cover.";
+                    planning.append(el("h3", null, outlook));
+                    const lookouts = el("div", "ambient-lookouts");
+                    const sunsetValue = todayWeather.sunset
+                        ? formatTime(new Date(todayWeather.sunset), { hour: "numeric", minute: "2-digit" })
+                        : "—";
+                    [
+                        ["umbrella", Number.isFinite(todayWeather.rain) ? todayWeather.rain + "%" : "—", "Rain chance"],
+                        ["wind", Number.isFinite(todayWeather.wind) ? Math.round(todayWeather.wind) + " km/h" : "—", "Wind"],
+                        ["sunset", sunsetValue, "Sunset"],
+                    ].forEach(([iconName, value, label]) => {
+                        const item = el("div");
+                        item.innerHTML = ic(iconName, 22);
+                        const copy = el("span");
+                        copy.append(el("strong", null, value), document.createTextNode(label));
+                        item.append(copy);
+                        lookouts.append(item);
+                    });
+                    planning.append(lookouts);
+                    const hourlyCard = el("section", "ambient-hourly-card");
+                    const hourlyHeading = el("div", "ambient-forecast-card-heading");
+                    hourlyHeading.append(el("h3", null, "Next few hours"), el("span", null, "Hourly"));
+                    hourlyCard.append(hourlyHeading);
+                    const hourlyStrip = el("div", "ambient-hourly-strip");
+                    const currentHour = new Date();
+                    currentHour.setMinutes(0, 0, 0);
+                    const futureHourly = (todayWeather.hourly || [])
+                        .filter((hour) => new Date(hour.time) >= currentHour)
+                        .slice(0, 5);
+                    futureHourly.forEach((hour, index) => {
+                        const item = el("article", index === 0 ? "is-now" : "");
+                        item.append(el("time", null, index === 0 ? "Now" : formatTime(new Date(hour.time), { hour: "numeric" })));
+                        const hourIcon = el("span");
+                        hourIcon.innerHTML = ic(weatherIcon(hour.code, hour.isDay), 30);
+                        item.append(
+                            hourIcon,
+                            el("strong", null, formatTodayTemperature(hour.temperature)),
+                            el("span", null, Number.isFinite(hour.rain) ? hour.rain + "%" : "—"),
+                        );
+                        hourlyStrip.append(item);
+                    });
+                    hourlyCard.append(hourlyStrip);
+                    const weekCard = el("section", "ambient-week-card");
+                    const weekHeading = el("div", "ambient-forecast-card-heading");
+                    weekHeading.append(el("h3", null, "Next 5 days"), el("span", null, "High · Low"));
+                    weekCard.append(weekHeading);
+                    const weekGrid = el("div", "ambient-week-grid");
+                    (todayWeather.daily || []).slice(0, 5).forEach((day, index) => {
+                        const item = el("article");
+                        item.append(el("time", null, index === 0 ? "Today" : new Date(day.day + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" })));
+                        const dayIcon = el("span");
+                        dayIcon.innerHTML = ic(weatherIcon(day.code, true), 36);
+                        const temperatures = el("strong", null, formatTodayTemperature(day.high) + " ");
+                        temperatures.append(el("span", null, formatTodayTemperature(day.low)));
+                        item.append(dayIcon, temperatures, el("small", null, Number.isFinite(day.rain) ? day.rain + "%" : "—"));
+                        weekGrid.append(item);
+                    });
+                    weekCard.append(weekGrid);
+                    forecastLayout.append(planning, hourlyCard, weekCard);
+                    weatherView.append(forecastLayout);
+                }
+                page.append(content, weatherView);
                 overlay.append(page);
                 todayOverlaySignature = signature;
                 if (focusedId) overlay.querySelector("#" + focusedId)?.focus();
@@ -1321,7 +1623,7 @@
                 );
                 const dayButton = el(
                     "button",
-                    "text-sm lg:text-base font-semibold w-7 h-7 grid place-items-center rounded-full shrink-0 " +
+                    "text-sm lg:text-base font-medium w-7 h-7 grid place-items-center rounded-full shrink-0 " +
                         (k === td ? "bg-accent text-on" : ""),
                     num,
                 );
@@ -1341,7 +1643,7 @@
                                 eventDisplayTitle(e),
                         );
                     p.style.background = m.c;
-                    p.style.color = INK;
+                    p.style.color = m.d;
                     const eventTag = tag(p, e);
                     activateEventNode(eventTag, e);
                     c.append(eventTag);
@@ -1369,8 +1671,10 @@
             // Scrolling or navigating starts a quiet timer that returns the view
             // to the current day and time after the user has stopped interacting.
             const NOW_IDLE_MS = 3 * 60 * 1000; // how long to wait after the user stops interacting before snapping back to "now"
+            const AMBIENT_IDLE_MS = 2 * 60 * 1000;
             let nowIdleTimer = null,
-                suppressScrollEvents = false;
+                suppressScrollEvents = false,
+                ambientReadyAt = Date.now() + AMBIENT_IDLE_MS;
             function goToNow() {
                 if (sheet || detailEvent || setOpen) {
                     armIdleReset();
@@ -1398,6 +1702,18 @@
                     if (!sheet && !detailEvent && !setOpen)
                         document.body.classList.add("chrome-idle");
                 }, CHROME_IDLE_MS);
+            }
+            function noteUserActivity(event) {
+                if (
+                    todayOverlayOpen &&
+                    !todayOverlayOpen.preview &&
+                    event?.type === "pointermove"
+                )
+                    return;
+                if (todayOverlayOpen && !todayOverlayOpen.preview)
+                    closeTodayOverlay(false);
+                ambientReadyAt = Date.now() + AMBIENT_IDLE_MS;
+                wakeChrome();
             }
             function layoutDay(list) {
                 const items = list
@@ -1497,13 +1813,13 @@
                         ),
                         dayNumber = el(
                             "span",
-                            "w-10 h-10 shrink-0 grid place-items-center rounded-full text-lg font-semibold " +
+                            "w-10 h-10 shrink-0 grid place-items-center rounded-full text-lg font-medium " +
                                 (today ? "bg-accent text-on" : "bg-bg"),
                             date.getDate(),
                         ),
                         dateLabel = el(
                             "span",
-                            "flex-1 text-sm font-semibold",
+                            "flex-1 text-sm font-medium",
                             date.toLocaleDateString(undefined, {
                                 weekday: "long",
                                 month: "long",
@@ -1541,14 +1857,14 @@
                                 title = tag(
                                     el(
                                         "span",
-                                        "block min-w-0 truncate text-sm font-semibold",
+                                        "block min-w-0 truncate text-sm font-medium",
                                         eventDisplayTitle(event),
                                     ),
                                     event,
                                 );
                             card.style.background = color.c;
-                            card.style.color = INK;
-                            card.style.borderLeft = "4px solid " + color.d;
+                            card.style.color = color.d;
+                            card.style.borderColor = "color-mix(in srgb, " + color.d + " 18%, transparent)";
                             card.setAttribute(
                                 "aria-label",
                                 (event.tm ? trange(event) : "All day") +
@@ -1665,11 +1981,11 @@
                             const m = sty(e),
                                 p = el(
                                     "div",
-                                    "truncate rounded-md px-2 py-1 text-xs lg:text-sm font-semibold",
+                                    "truncate rounded-md px-2 py-1 text-xs lg:text-sm font-medium",
                                     eventDisplayTitle(e),
                                 );
                             p.style.background = m.c;
-                            p.style.color = INK;
+                            p.style.color = m.d;
                             const eventTag = tag(p, e);
                             activateEventNode(eventTag, e);
                             c.append(eventTag);
@@ -1767,7 +2083,7 @@
                             ";background:" +
                             fill +
                             ";color:" +
-                            INK +
+                            m.d +
                             ";border:2px solid var(--card);z-index:" +
                             i.z;
                         if (h >= 52)
@@ -1780,7 +2096,7 @@
                                 tag(
                                     el(
                                         "div",
-                                        "text-sm lg:text-base font-semibold leading-tight line-clamp-2 break-words",
+                                        "text-sm lg:text-base font-medium leading-tight line-clamp-2 break-words",
                                         eventDisplayTitle(e),
                                     ),
                                     e,
@@ -1791,7 +2107,7 @@
                                 tag(
                                     el(
                                         "div",
-                                        "text-xs lg:text-sm font-semibold truncate",
+                                        "text-xs lg:text-sm font-medium truncate",
                                         tshort(e.tm) + " " + eventDisplayTitle(e),
                                     ),
                                     e,
@@ -1835,7 +2151,7 @@
                 const addRow = (label, value, valueClass = "") => {
                     const row = el("section", "py-3 border-b border-line last:border-b-0");
                     row.append(
-                        el("h3", "text-xs font-semibold uppercase tracking-wide text-mute", label),
+                        el("h3", "text-xs font-medium uppercase tracking-wide text-mute", label),
                         el("p", "mt-1 text-sm text-ink break-words " + valueClass, value),
                     );
                     content.append(row);
@@ -1853,7 +2169,7 @@
                 const assignedPeople = peopleForEvent(event);
                 if (assignedPeople.length) {
                     const row = el("section", "py-3 border-b border-line last:border-b-0");
-                    row.append(el("h3", "text-xs font-semibold uppercase tracking-wide text-mute", "People"));
+                    row.append(el("h3", "text-xs font-medium uppercase tracking-wide text-mute", "People"));
                     const list = el("div", "mt-2 flex flex-wrap gap-2");
                     assignedPeople.forEach((person) => {
                         const chip = el("div", "inline-flex items-center gap-2 rounded-full border border-line bg-bg py-1 pl-1 pr-3");
@@ -1971,18 +2287,23 @@
                 if (setOpen) {
                     const db = $("daybtns");
                     db.innerHTML = "";
-                    for (let n = 1; n <= 7; n++) {
-                        const b = el(
-                            "button",
-                            "h-11 rounded-lg border text-base font-semibold " +
-                                (n === days
-                                    ? "bg-accent text-on border-accent"
-                                    : "bg-bg border-line"),
-                            n,
-                        );
-                        b.onclick = () => setDays(n);
-                        db.append(b);
-                    }
+                    const decreaseDays = el("button", null, "−");
+                    decreaseDays.type = "button";
+                    decreaseDays.disabled = days <= 1;
+                    decreaseDays.setAttribute("aria-label", "Show one fewer day");
+                    decreaseDays.onclick = () => setDays(days - 1);
+                    const dayCount = el(
+                        "output",
+                        "settings-stepper-output",
+                        `${days} ${days === 1 ? "day" : "days"}`,
+                    );
+                    dayCount.setAttribute("aria-live", "polite");
+                    const increaseDays = el("button", null, "+");
+                    increaseDays.type = "button";
+                    increaseDays.disabled = days >= 7;
+                    increaseDays.setAttribute("aria-label", "Show one more day");
+                    increaseDays.onclick = () => setDays(days + 1);
+                    db.append(decreaseDays, dayCount, increaseDays);
                     renderTabs();
                     renderCals();
                     renderTheme();
@@ -2022,7 +2343,7 @@
                     const t = el("div", "flex-1 min-w-0 flex flex-col");
                     const titleButton = el(
                         "button",
-                        "w-full text-left truncate text-sm font-semibold",
+                        "w-full text-left truncate text-sm font-medium",
                         eventDisplayTitle(e),
                     );
                     titleButton.type = "button";
@@ -2082,6 +2403,7 @@
                     back = $("calendar-add-back");
                 main.classList.toggle("hidden", calendarFormOpen);
                 add.classList.toggle("hidden", !calendarFormOpen);
+                $("settings-sidebar").hidden = subviewOpen;
                 $("stabs").style.display = subviewOpen ? "none" : "";
                 $("settings-title").textContent = calendarFormOpen
                     ? "Add calendar"
@@ -2089,7 +2411,14 @@
                       ? editingPersonId
                           ? "Edit person"
                           : "Add person"
-                      : "Settings";
+                      : ({
+                            calendars: "Calendars",
+                            people: "People",
+                            view: "View",
+                            today: "Ambient",
+                            appearance: "Appearance",
+                            about: "About",
+                        })[setTab];
                 back.classList.toggle("hidden", !subviewOpen);
                 back.classList.toggle("grid", subviewOpen);
                 back.setAttribute(
@@ -2105,25 +2434,31 @@
                 const tb = $("stabs");
                 tb.innerHTML = "";
                 const tabs = [
-                    ["calendars", "Calendars"],
-                    ["people", "People"],
-                    ["view", "View"],
-                    ["today", "Today"],
-                    ["appearance", "Appearance"],
-                    ["about", "About"],
+                    ["calendars", "Calendars", "calendar-days", "Manage"],
+                    ["people", "People", "users", "Manage"],
+                    ["view", "View", "columns-3", "Preferences"],
+                    ["today", "Ambient", "sun", "Preferences"],
+                    ["appearance", "Appearance", "settings", "Preferences"],
+                    ["about", "About", "heart", "Covey"],
                 ];
                 if (demo) tabs.splice(1, 1);
-                tabs.forEach(([k, n]) => {
+                let currentGroup = "";
+                tabs.forEach(([k, n, iconName, group]) => {
+                    if (group !== currentGroup) {
+                        const label = el("p", "settings-nav-label", group);
+                        label.setAttribute("aria-hidden", "true");
+                        tb.append(label);
+                        currentGroup = group;
+                    }
                     const b = el(
                         "button",
-                        "-mb-px flex-1 border-b-2 px-2 py-2.5 text-sm font-medium transition-colors " +
-                            (k === setTab
-                                ? "border-accent text-accent"
-                                : "border-transparent text-mute hover:border-line hover:text-ink"),
-                        n,
+                        "settings-tab transition-colors",
                     );
+                    b.type = "button";
+                    b.innerHTML = ic(iconName, 18) + `<span>${n}</span>`;
                     b.setAttribute("role", "tab");
                     b.setAttribute("aria-selected", k === setTab);
+                    b.setAttribute("aria-controls", "tab-" + k);
                     b.onclick = () => {
                         if (k !== "calendars") calendarFormOpen = false;
                         setTab = k;
@@ -2138,12 +2473,12 @@
             function mkSwitch(on) {
                 const b = el(
                     "span",
-                    "relative shrink-0 w-12 h-7 rounded-full border border-line block",
+                    "settings-switch-track relative shrink-0 block",
                 );
                 b.style.background = on ? "var(--accent)" : "var(--bg)";
                 const k = el(
                     "span",
-                    "absolute top-[3px] left-[3px] w-5 h-5 rounded-full transition-transform",
+                    "settings-switch-thumb",
                 );
                 k.style.background = on ? "var(--on)" : "var(--mute)";
                 k.style.transform = on ? "translateX(20px)" : "";
@@ -2151,15 +2486,29 @@
                 return b;
             }
             function renderCalendarChoices() {
+                const colorToggle = $("calendar-color-toggle");
+                const selectedColor = CALENDAR_COLORS[addCalendarColor];
+                colorToggle.innerHTML = `
+                    <span class="settings-disclosure-main">
+                        <span class="settings-disclosure-swatch" style="background:${selectedColor.bg}"></span>
+                        <span class="settings-disclosure-copy"><strong>${selectedColor.label}</strong><small>Color</small></span>
+                    </span>
+                    ${ic("chevron-down", 18)}`;
+                colorToggle.setAttribute(
+                    "aria-expanded",
+                    addCalendarPickerOpen === "color",
+                );
+
                 const colors = $("calendar-colors");
                 colors.innerHTML = "";
+                colors.classList.toggle(
+                    "hidden",
+                    addCalendarPickerOpen !== "color",
+                );
                 Object.entries(CALENDAR_COLORS).forEach(([key, color]) => {
                     const button = el(
                         "button",
-                        "flex flex-col items-center gap-1 rounded-lg border p-2 text-[10px] transition-colors " +
-                            (key === addCalendarColor
-                                ? "border-accent ring-2 ring-accent"
-                                : "border-line"),
+                        "settings-choice flex-col",
                         color.label,
                     );
                     button.type = "button";
@@ -2171,20 +2520,34 @@
                     button.prepend(swatch);
                     button.onclick = () => {
                         addCalendarColor = key;
+                        addCalendarPickerOpen = null;
                         renderCalendarChoices();
                     };
                     colors.append(button);
                 });
 
+                const iconToggle = $("calendar-icon-toggle");
+                iconToggle.innerHTML = `
+                    <span class="settings-disclosure-main">
+                        <span class="h-5 w-5 grid shrink-0 place-items-center">${ic(addCalendarIcon, 18)}</span>
+                        <span class="settings-disclosure-copy"><strong>${CALENDAR_ICON_LABELS[addCalendarIcon]}</strong><small>Icon</small></span>
+                    </span>
+                    ${ic("chevron-down", 18)}`;
+                iconToggle.setAttribute(
+                    "aria-expanded",
+                    addCalendarPickerOpen === "icon",
+                );
+
                 const icons = $("calendar-icons");
                 icons.innerHTML = "";
+                icons.classList.toggle(
+                    "hidden",
+                    addCalendarPickerOpen !== "icon",
+                );
                 Object.entries(CALENDAR_ICON_LABELS).forEach(([key, label]) => {
                     const button = el(
                         "button",
-                        "flex flex-col items-center gap-1 rounded-lg border p-2 text-[10px] transition-colors " +
-                            (key === addCalendarIcon
-                                ? "border-accent ring-2 ring-accent"
-                                : "border-line"),
+                        "settings-choice flex-col",
                         label,
                     );
                     button.type = "button";
@@ -2196,6 +2559,7 @@
                     button.prepend(glyph);
                     button.onclick = () => {
                         addCalendarIcon = key;
+                        addCalendarPickerOpen = null;
                         renderCalendarChoices();
                     };
                     icons.append(button);
@@ -2217,8 +2581,7 @@
                     const selected = addPersonCalendarIds.has(calendar.id);
                     const row = el(
                         "label",
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer " +
-                            (selected ? "border-accent bg-accent/10" : "border-line"),
+                        "person-calendar-choice cursor-pointer",
                     );
                     const checkbox = el("input", "h-4 w-4 accent-accent");
                     checkbox.type = "checkbox";
@@ -2226,11 +2589,15 @@
                     checkbox.onchange = () => {
                         if (checkbox.checked) addPersonCalendarIds.add(calendar.id);
                         else addPersonCalendarIds.delete(calendar.id);
-                        row.className =
-                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer " +
-                            (checkbox.checked ? "border-accent bg-accent/10" : "border-line");
                     };
-                    row.append(checkbox, el("span", "truncate", calendar.name));
+                    const swatch = el("span", "h-3 w-3 shrink-0 rounded-full");
+                    swatch.style.background =
+                        CALENDAR_COLORS[calendar.color]?.bg || "var(--soft-lavender)";
+                    row.append(
+                        checkbox,
+                        swatch,
+                        el("span", "truncate", calendar.name),
+                    );
                     choices.append(row);
                 });
             }
@@ -2245,10 +2612,7 @@
                 }).forEach(([key, label]) => {
                     const button = el(
                         "button",
-                        "h-14 grid place-items-center rounded-lg border " +
-                            (addPersonAvatar === key && !addPersonImage
-                                ? "border-accent ring-2 ring-accent"
-                                : "border-line"),
+                        "person-avatar-choice",
                     );
                     button.type = "button";
                     button.title = label;
@@ -2273,8 +2637,7 @@
                     const selected = addPersonImage === src;
                     const button = el(
                         "button",
-                        "flex flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors " +
-                            (selected ? "border-accent ring-2 ring-accent" : "border-line"),
+                        "person-avatar-choice",
                     );
                     button.type = "button";
                     button.title = name;
@@ -2340,44 +2703,49 @@
                 people.forEach((person) => {
                     const row = el(
                         "div",
-                        "flex items-center gap-3 border-b border-line py-2 last:border-b-0",
+                        "person-row",
                     );
                     const linkedCalendars = (person.calendarIds || [])
                         .map((id) => calendarConfigs.find((calendar) => calendar.id === id))
                         .filter((calendar) => calendar?.type === "event");
-                    const identity = el("div", "flex-1 min-w-0 flex flex-col");
-                    identity.append(
-                        el("span", "truncate text-sm font-medium", person.name),
-                        el(
-                            "span",
-                            "truncate text-xs text-mute",
-                            linkedCalendars.length
-                                ? linkedCalendars.map((calendar) => calendar.name).join(", ")
-                                : "No calendars associated",
-                        ),
-                    );
-                    row.append(avatarNode(person, 36), identity);
+                    const identity = el("div", "min-w-0 flex flex-col gap-1.5");
+                    identity.append(el("span", "truncate text-sm font-medium", person.name));
+                    const calendarTags = el("div", "person-calendar-tags");
+                    if (linkedCalendars.length) {
+                        linkedCalendars.forEach((calendar) =>
+                            calendarTags.append(
+                                el("span", "person-calendar-tag", calendar.name),
+                            ),
+                        );
+                    } else {
+                        calendarTags.append(
+                            el("span", "text-xs text-mute", "No calendars associated"),
+                        );
+                    }
+                    identity.append(calendarTags);
+                    row.append(avatarNode(person, 48), identity);
 
+                    const actions = el("div", "person-row-actions");
                     const edit = el(
                         "button",
-                        "h-9 w-9 grid place-items-center rounded-lg text-mute hover:bg-bg hover:text-accent",
+                        "settings-icon-button grid place-items-center hover:bg-card/60",
                     );
                     edit.type = "button";
                     edit.innerHTML = ic("pencil", 16);
                     edit.setAttribute("aria-label", "Edit " + person.name);
                     edit.title = "Edit person";
                     edit.onclick = () => openPersonForm(person);
-                    row.append(edit);
                     const remove = el(
                         "button",
-                        "h-9 w-9 grid place-items-center rounded-lg text-mute hover:text-rose-600",
+                        "settings-icon-button grid place-items-center hover:bg-card/60 hover:text-rose-600",
                     );
                     remove.type = "button";
                     remove.innerHTML = ic("trash-2", 16);
                     remove.setAttribute("aria-label", "Remove " + person.name);
                     remove.title = "Remove person";
                     remove.onclick = () => removePerson(person);
-                    row.append(remove);
+                    actions.append(edit, remove);
+                    row.append(actions);
                     cards.append(row);
                 });
                 $("person-add-toggle").classList.toggle("hidden", personFormOpen);
@@ -2539,7 +2907,7 @@
                     if (custom) {
                         const remove = el(
                             "button",
-                            "w-9 h-9 grid place-items-center rounded-lg text-mute hover:text-rose-600",
+                            "settings-icon-button grid place-items-center text-mute hover:text-rose-600",
                         );
                         remove.type = "button";
                         remove.innerHTML = ic("trash-2", 16);
@@ -2600,10 +2968,12 @@
                 ].forEach(([k, n]) => {
                     const b = el(
                         "button",
-                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                        "flex-1 rounded-lg text-sm font-medium " +
                             (k === txt ? "bg-accent text-on" : ""),
                         n,
                     );
+                    b.type = "button";
+                    b.setAttribute("aria-pressed", k === txt ? "true" : "false");
                     b.onclick = () => {
                         txt = k;
                         GT.setText(k);
@@ -2619,14 +2989,13 @@
                     const c = t[md];
                     const b = el(
                         "button",
-                        "flex flex-col gap-1.5 rounded-xl border p-2 text-xs font-medium " +
-                            (k === pal
-                                ? "border-accent ring-2 ring-accent"
-                                : "border-line"),
+                        "appearance-theme-choice flex flex-col gap-1.5",
                     );
+                    b.type = "button";
+                    b.setAttribute("aria-pressed", k === pal ? "true" : "false");
                     const sw = el(
                         "span",
-                        "flex w-full h-8 rounded-lg overflow-hidden border",
+                        "appearance-theme-swatch flex w-full",
                     );
                     sw.style.borderColor = c.line;
                     [c.bg, c.card, c.accent].forEach((x) => {
@@ -2643,13 +3012,7 @@
                     };
                     tb.append(b);
                 });
-                $("autosw").setAttribute("aria-checked", auto);
-                $("autosw").style.background = auto
-                    ? "var(--accent)"
-                    : "var(--bg)";
-                const kn = $("autoknob");
-                kn.style.background = auto ? "var(--on)" : "var(--mute)";
-                kn.style.transform = auto ? "translateX(20px)" : "";
+                $("autosw").checked = auto;
                 $("autotimes").style.opacity = auto ? "1" : ".5";
                 $("dfrom").disabled = $("dto").disabled = !auto;
                 if (document.activeElement !== $("dfrom"))
@@ -2666,7 +3029,7 @@
                 ].forEach(([key, label]) => {
                     const button = el(
                         "button",
-                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                        "flex-1 rounded-lg text-sm font-medium " +
                             (timeFormat === key ? "bg-accent text-on" : ""),
                         label,
                     );
@@ -2690,7 +3053,7 @@
                 ].forEach(([compact, label]) => {
                     const button = el(
                         "button",
-                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                        "flex-1 rounded-lg text-sm font-medium " +
                             (compactWeek === compact
                                 ? "bg-accent text-on"
                                 : ""),
@@ -2715,7 +3078,7 @@
                 kinds.forEach((k) => {
                     const b = el(
                         "button",
-                        "flex-1 h-9 rounded-full text-sm font-semibold " +
+                        "flex-1 h-9 rounded-full text-sm font-medium " +
                             (k === addKind ? "bg-accent text-on" : ""),
                         {
                             event: "Event",
@@ -2823,7 +3186,8 @@
                 const output = $("calendar-add-status");
                 output.textContent = message;
                 output.className =
-                    "min-h-4 text-xs " + (error ? "text-rose-600" : "text-mute");
+                    "mt-2 text-xs empty:hidden " +
+                    (error ? "text-rose-600" : "text-mute");
             }
             function updateCalendarAddButton() {
                 const button = $("calendar-add-save");
@@ -2851,6 +3215,7 @@
                     hide["calendar:" + config.calendar.id] = false;
                     saveSet();
                     calendarFormOpen = false;
+                    addCalendarPickerOpen = null;
                     $("calendar-name").value = "";
                     $("calendar-confirm").checked = false;
                     setCalendarAddStatus("");
@@ -2902,6 +3267,7 @@
             $("go").onclick = add;
             $("calendar-add-toggle").onclick = () => {
                 calendarFormOpen = true;
+                addCalendarPickerOpen = null;
                 renderCalendarChoices();
                 setCalendarAddStatus("");
                 render();
@@ -2910,6 +3276,7 @@
             $("calendar-add-back").onclick = () => {
                 if (calendarFormOpen) {
                     calendarFormOpen = false;
+                    addCalendarPickerOpen = null;
                     render();
                     $("calendar-add-toggle").focus();
                 } else if (personFormOpen) {
@@ -2920,12 +3287,23 @@
             };
             $("calendar-add-cancel").onclick = () => {
                 calendarFormOpen = false;
+                addCalendarPickerOpen = null;
                 $("calendar-name").value = "";
                 $("calendar-confirm").checked = false;
                 setCalendarAddStatus("");
                 updateCalendarAddButton();
                 render();
                 $("calendar-add-toggle").focus();
+            };
+            $("calendar-color-toggle").onclick = () => {
+                addCalendarPickerOpen =
+                    addCalendarPickerOpen === "color" ? null : "color";
+                renderCalendarChoices();
+            };
+            $("calendar-icon-toggle").onclick = () => {
+                addCalendarPickerOpen =
+                    addCalendarPickerOpen === "icon" ? null : "icon";
+                renderCalendarChoices();
             };
             $("calendar-name").oninput = () => {
                 setCalendarAddStatus("");
@@ -3002,8 +3380,8 @@
                     render();
                 }
             });
-            $("autosw").onclick = () => {
-                auto = !auto;
+            $("autosw").onchange = (event) => {
+                auto = event.target.checked;
                 ovr = null;
                 saveSet();
                 paint();
@@ -3040,12 +3418,12 @@
                 else checkTodayView();
             };
             $("today-preview").onclick = () => {
-                const now = new Date();
-                openTodayOverlay(
-                    scheduledTodaySlot(now) || (now.getHours() < 12 ? "morning" : "evening"),
-                    true,
-                );
+                openTodayOverlay(ambientPeriod(new Date()), true);
             };
+            document.querySelectorAll("[data-ambient-preview]").forEach((button) => {
+                button.onclick = () =>
+                    openTodayOverlay(button.dataset.ambientPreview, true);
+            });
             $("today-temperature-unit").onchange = (event) => {
                 todayTemperatureUnit = event.target.value === "C" ? "C" : "F";
                 saveSet();
@@ -3127,8 +3505,11 @@
                 );
             });
             document.addEventListener("visibilitychange", () => {
-                if (document.visibilityState === "visible")
+                if (document.visibilityState === "visible") {
                     requestScreenWakeLock();
+                    tick();
+                    load();
+                }
             });
             addEventListener("resize", render);
             addEventListener("load", render);
@@ -3140,7 +3521,7 @@
             $("listview").addEventListener("scroll", armIdleReset);
             ["pointerdown", "pointermove", "touchstart", "keydown", "wheel"].forEach(
                 (evt) =>
-                    document.addEventListener(evt, wakeChrome, {
+                    document.addEventListener(evt, noteUserActivity, {
                         passive: true,
                     }),
             );

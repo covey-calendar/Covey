@@ -13,6 +13,8 @@ Covey is a minimal, family-focused calendar that brings your iCloud calendars in
 - Calendar visibility filters
 - Preferences saved in the browser
 - Minimal interface that fades secondary controls when idle
+- Time-aware Ambient Mode for morning, daytime, evening, and tomorrow briefings
+- Optional screen wake lock for counter-mounted Android displays
 - Responsive layout for desktop and mobile devices
 - App icon, launch splash screen, and iOS Home Screen support
 - Open-source project designed to run on your own infrastructure
@@ -78,6 +80,14 @@ npm start
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 The server reads `.env` at startup. If you change your configuration, stop and restart Covey.
+
+For development, run:
+
+```sh
+npm run dev
+```
+
+Open the local URL shown in the terminal (normally [http://localhost:5173](http://localhost:5173)). Front-end changes refresh the browser automatically, and changes to the server restart it automatically. If that port is already occupied, Covey selects the next available one.
 
 ## How it works
 

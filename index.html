@@ -7,7 +7,7 @@
             content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#c8553d" />
+        <meta name="theme-color" content="#f4efe8" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
             name="apple-mobile-web-app-status-bar-style"
@@ -59,12 +59,12 @@
             };
         </script>
 
-        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="/style.css" />
     </head>
     <body class="bg-bg text-ink">
         <div
             id="splash"
-            class="fixed inset-0 z-[999] flex items-center justify-center bg-[#f4efe8]"
+            class="fixed inset-0 z-[999] flex items-center justify-center bg-bg"
             aria-hidden="true"
         >
             <div class="flex flex-col items-center gap-6">
@@ -80,9 +80,16 @@
                 </div>
             </div>
         </div>
+        <div class="calendar-atmosphere" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="calendar-grain" aria-hidden="true"></div>
         <div id="app-shell" class="h-full flex flex-col p-3 pt-2">
             <section class="flex-1 min-w-0 min-h-0 flex flex-col">
                 <header
+                    id="topbar"
                     class="flex items-center gap-2 mb-2 flex-wrap landscape:grid landscape:grid-cols-[1fr_auto_1fr]"
                 >
                     <div class="flex items-center gap-2 min-w-0 idle-fade">
@@ -106,7 +113,7 @@
                         ></h1>
                         <button
                             id="todaybtn"
-                            class="h-10 px-4 rounded-full border border-line bg-card text-sm font-semibold"
+                            class="h-10 px-4 rounded-full border border-line bg-card text-sm font-medium"
                         >
                             Today
                         </button>
@@ -188,6 +195,7 @@
                     </div>
                 </header>
                 <div
+                    id="calendar-surface"
                     class="flex-1 min-h-0 flex flex-col rounded-2xl border border-line bg-card overflow-hidden"
                 >
                     <div
@@ -229,7 +237,7 @@
 
         <div
             id="today-overlay"
-            class="hidden fixed inset-0 z-[60] overflow-y-auto bg-bg"
+            class="hidden fixed inset-0 z-[60] overflow-hidden bg-bg"
             aria-hidden="true"
             tabindex="-1"
         ></div>
@@ -255,10 +263,11 @@
             "
         >
             <div
+                id="settings-panel"
                 class="bg-card border border-line rounded-2xl p-4 w-full max-w-md max-h-full flex flex-col"
             >
                 <div class="flex items-center justify-between mb-2">
-                    <h2 id="sd" class="text-lg font-semibold"></h2>
+                    <h2 id="sd" class="text-lg font-medium"></h2>
                     <button
                         id="close"
                         class="w-9 h-9 grid place-items-center text-mute"
@@ -323,7 +332,7 @@
                     <button
                         id="go"
                         aria-busy="false"
-                        class="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent py-2.5 font-semibold text-on disabled:cursor-wait disabled:opacity-60"
+                        class="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-accent py-2.5 font-medium text-on disabled:cursor-wait disabled:opacity-60"
                     >
                         <span id="go-label">Add</span>
                         <span
@@ -374,7 +383,7 @@
                 class="bg-card border border-line rounded-2xl p-4 w-full max-w-md max-h-full flex flex-col"
             >
                 <div class="flex items-center justify-between gap-3 mb-3 shrink-0">
-                    <h2 id="event-detail-title" class="text-lg font-semibold truncate"></h2>
+                    <h2 id="event-detail-title" class="text-lg font-medium truncate"></h2>
                     <button
                         id="event-detail-close"
                         class="w-9 h-9 grid place-items-center text-mute shrink-0"
@@ -394,44 +403,49 @@
             "
         >
             <div
-                class="bg-card border border-line rounded-2xl p-4 w-full max-w-md max-h-full flex flex-col"
+                id="settings-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="settings-title"
+                class="bg-card border border-line rounded-2xl w-full max-h-full"
             >
-                <div class="flex items-center justify-between mb-3 shrink-0">
-                    <div class="flex min-w-0 items-center gap-2">
+                <aside id="settings-sidebar" aria-label="Settings navigation">
+                    <h2 class="settings-sidebar-title">Settings</h2>
+                    <div
+                        id="stabs"
+                        role="tablist"
+                        aria-label="Settings sections"
+                    ></div>
+                </aside>
+                <section class="settings-main">
+                    <div class="settings-content-header">
+                        <div class="flex min-w-0 items-center gap-2">
                         <button
                             id="calendar-add-back"
                             type="button"
-                            class="hidden h-9 w-9 shrink-0 place-items-center rounded-lg text-mute hover:bg-bg hover:text-ink"
+                            class="settings-icon-button hidden shrink-0 place-items-center text-mute"
                             aria-label="Back to calendars"
                         ><i data-i="chevron-left" data-s="18"></i></button>
-                        <h2 id="settings-title" class="text-lg font-semibold">Settings</h2>
+                            <h2 id="settings-title" class="text-xl font-medium">Calendars</h2>
+                        </div>
+                        <button
+                            id="sclose"
+                            class="settings-icon-button grid place-items-center text-mute"
+                            aria-label="Close settings"
+                        >
+                            <i data-i="x"></i>
+                        </button>
                     </div>
-                    <button
-                        id="sclose"
-                        class="w-9 h-9 grid place-items-center text-mute"
-                        aria-label="Close settings"
-                    >
-                        <i data-i="x"></i>
-                    </button>
-                </div>
-                <div
-                    id="stabs"
-                    role="tablist"
-                    class="flex border-b border-line mb-4 shrink-0"
-                ></div>
-                <div class="min-h-0 overflow-y-auto">
+                    <div class="settings-scroll min-h-0 overflow-y-auto">
                     <div id="tab-calendars">
                         <section id="calendar-main-view" aria-hidden="false">
                             <div id="cals" class="flex flex-col"></div>
-                            <p class="text-xs text-mute mt-3">
-                                Turn a calendar off to hide its events everywhere.
-                            </p>
                             <p id="calendar-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
-                            <div id="calendar-add-section" class="mt-1 border-t border-line pt-4">
+                            <div id="calendar-add-section" class="mt-4 pt-2">
                                 <button
                                     id="calendar-add-toggle"
                                     type="button"
-                                    class="flex items-center gap-2 text-sm font-semibold text-accent"
+                                    class="settings-button settings-button-quiet flex items-center gap-2"
                                 >
                                     <i data-i="plus" data-s="16"></i>
                                     Add calendar
@@ -443,230 +457,222 @@
                     <div id="tab-people">
                         <section id="people-admin">
                             <div id="person-main-view">
-                                <div class="flex items-center justify-between gap-3">
-                                    <h3 class="text-sm font-semibold">People</h3>
+                                <div class="mb-5 flex items-center justify-between gap-4">
+                                    <h3 class="text-sm font-medium">Family members</h3>
                                     <button
                                         id="person-add-toggle"
                                         type="button"
-                                        class="inline-flex items-center gap-1 text-sm font-semibold text-accent"
+                                        class="settings-button settings-button-primary inline-flex items-center gap-2"
                                     ><i data-i="plus" data-s="16"></i>Add person</button>
                                 </div>
-                                <div id="person-cards" class="mt-2 flex flex-col"></div>
+                                <div id="person-cards" class="person-roster"></div>
                                 <p id="person-list-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                             </div>
-                            <div id="person-form" class="hidden space-y-3">
-                                <label class="block text-sm font-medium" for="person-name">
-                                    Name
-                                    <input
-                                        id="person-name"
-                                        maxlength="60"
-                                        autocomplete="off"
-                                        class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
-                                        placeholder="e.g. Stan"
-                                    />
-                                </label>
-                                <fieldset class="space-y-2">
-                                    <legend class="text-sm font-medium">Associated calendars</legend>
-                                    <p class="text-xs text-mute">Select every event calendar this person belongs to.</p>
-                                    <div id="person-calendar-choices" class="grid grid-cols-1 gap-2 sm:grid-cols-2"></div>
-                                </fieldset>
-                                <div>
-                                    <p class="mb-2 text-sm font-medium">Choose an avatar</p>
-                                    <div id="person-avatar-choices" class="grid grid-cols-4 gap-2 mb-2"></div>
-                                    <div id="person-bird-choices" class="grid grid-cols-4 gap-2"></div>
+                            <div id="person-form" class="settings-form hidden space-y-3">
+                                <div class="person-form-grid">
+                                    <div>
+                                        <label class="block text-sm font-medium" for="person-name">
+                                            Name
+                                            <input
+                                                id="person-name"
+                                                maxlength="60"
+                                                autocomplete="off"
+                                                class="settings-field mt-1 w-full"
+                                                placeholder="e.g. Stan"
+                                            />
+                                        </label>
+                                        <div class="mt-6">
+                                            <p class="mb-2 text-sm font-medium">Avatar</p>
+                                            <div id="person-avatar-choices" class="person-avatar-grid"></div>
+                                            <div id="person-bird-choices" class="person-bird-grid mt-2"></div>
+                                        </div>
+                                        <label class="settings-upload mt-3" for="person-image">
+                                            <input id="person-image" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
+                                            <span>Upload a photo</span>
+                                        </label>
+                                        <div id="person-avatar-preview" class="hidden"></div>
+                                    </div>
+                                    <fieldset>
+                                        <legend class="text-sm font-medium">Calendars</legend>
+                                        <div id="person-calendar-choices" class="mt-2 grid grid-cols-1 gap-2"></div>
+                                    </fieldset>
                                 </div>
-                                <label class="block text-sm font-medium" for="person-image">
-                                    Or upload a custom avatar
-                                    <input
-                                        id="person-image"
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        class="mt-1 block w-full text-xs text-mute file:mr-3 file:rounded-lg file:border-0 file:bg-bg file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
-                                    />
-                                </label>
-                                <div id="person-avatar-preview" class="flex items-center gap-2 text-xs text-mute"></div>
-                                <div class="flex gap-2">
-                                    <button
-                                        id="person-add-cancel"
-                                        type="button"
-                                        class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
-                                    >Cancel</button>
-                                    <button
-                                        id="person-add-save"
-                                        type="button"
-                                        class="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-on disabled:cursor-not-allowed disabled:opacity-50"
-                                    >Save person</button>
+                                <div class="settings-footer">
+                                    <div class="flex gap-2">
+                                        <button
+                                            id="person-add-cancel"
+                                            type="button"
+                                            class="settings-button settings-button-secondary flex-1"
+                                        >Cancel</button>
+                                        <button
+                                            id="person-add-save"
+                                            type="button"
+                                            class="settings-button settings-button-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >Save person</button>
+                                    </div>
+                                    <p id="person-status" role="status" aria-live="polite" class="mt-2 text-xs text-mute empty:hidden"></p>
                                 </div>
-                                <p id="person-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                             </div>
                         </section>
                     </div>
                     <section id="calendar-add-view" class="hidden" aria-hidden="true" inert>
-                        <div id="calendar-add-form" class="space-y-4">
+                        <div id="calendar-add-form" class="settings-form space-y-4">
                             <label class="block text-sm font-medium" for="calendar-name">
                                 Calendar name
                                 <input
                                     id="calendar-name"
                                     maxlength="100"
                                     autocomplete="off"
-                                    class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink"
+                                    class="settings-field mt-1 w-full"
                                     placeholder="e.g. Sports"
                                 />
                             </label>
-                            <fieldset>
-                                <legend class="text-sm font-medium">Color</legend>
-                                <div id="calendar-colors" class="grid grid-cols-4 gap-2 mt-2"></div>
+                            <fieldset class="settings-section">
+                                <legend class="text-sm font-medium">Appearance</legend>
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <button id="calendar-color-toggle" type="button" class="settings-disclosure" aria-controls="calendar-colors" aria-expanded="false"></button>
+                                    <button id="calendar-icon-toggle" type="button" class="settings-disclosure" aria-controls="calendar-icons" aria-expanded="false"></button>
+                                </div>
+                                <div id="calendar-colors" class="settings-choice-grid hidden mt-3 grid grid-cols-4 gap-2"></div>
+                                <div id="calendar-icons" class="settings-choice-grid hidden mt-3 grid grid-cols-4 gap-2"></div>
                             </fieldset>
-                            <fieldset>
-                                <legend class="text-sm font-medium">Icon</legend>
-                                <div id="calendar-icons" class="grid grid-cols-4 gap-2 mt-2"></div>
-                            </fieldset>
-                            <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                                <p class="font-semibold">Add it to iCloud first</p>
-                                <p class="mt-1 text-xs text-mute">
-                                    Covey can only connect to calendars that already exist in your iCloud account. Create the calendar in iCloud, then confirm it appears there before continuing.
-                                </p>
-                                <label class="mt-3 flex items-start gap-2 text-xs font-medium">
-                                    <input id="calendar-confirm" type="checkbox" class="mt-0.5 accent-[var(--accent)]" />
-                                    <span>I confirmed this calendar already exists in iCloud.</span>
-                                </label>
+                            <label class="flex min-h-11 items-center gap-3 text-sm text-mute"><input id="calendar-confirm" type="checkbox" class="h-4 w-4 shrink-0 accent-[var(--accent)]" /><span>This calendar already exists in iCloud.</span></label>
+                            <div class="settings-footer">
+                                <div class="flex gap-2">
+                                    <button
+                                        id="calendar-add-cancel"
+                                        type="button"
+                                        class="settings-button settings-button-secondary flex-1"
+                                    >Cancel</button>
+                                    <button
+                                        id="calendar-add-save"
+                                        type="button"
+                                        disabled
+                                        class="settings-button settings-button-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >Add calendar</button>
+                                </div>
+                                <p id="calendar-add-status" role="status" aria-live="polite" class="mt-2 text-xs text-mute empty:hidden"></p>
                             </div>
-                            <div class="flex gap-2">
-                                <button
-                                    id="calendar-add-cancel"
-                                    type="button"
-                                    class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
-                                >Cancel</button>
-                                <button
-                                    id="calendar-add-save"
-                                    type="button"
-                                    disabled
-                                    class="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-on disabled:cursor-not-allowed disabled:opacity-50"
-                                >Add calendar</button>
-                            </div>
-                            <p id="calendar-add-status" role="status" aria-live="polite" class="min-h-4 text-xs text-mute"></p>
                         </div>
                     </section>
                     <div id="tab-view">
-                        <p class="text-sm font-medium mb-2">Time format</p>
-                        <div
-                            id="timeformats"
-                            role="group"
-                            aria-label="Time format"
-                            class="flex rounded-full border border-line bg-bg p-0.5"
-                        ></div>
-                        <p class="text-xs text-mute mt-2 mb-5">
-                            Device default follows this browser’s locale.
-                        </p>
-                        <p class="text-sm font-medium mb-2">Week view hours</p>
-                        <div
-                            id="weekhours"
-                            role="group"
-                            aria-label="Week view hours"
-                            class="flex rounded-full border border-line bg-bg p-0.5"
-                        ></div>
-                        <p class="text-xs text-mute mt-2 mb-5">
-                            Compact shows 8 AM–8 PM. The day header marks events outside those hours.
-                        </p>
-                        <p class="text-sm font-medium mb-2">
-                            Days shown in week and list views
-                        </p>
-                        <div
-                            id="daybtns"
-                            role="group"
-                            aria-label="Days shown in week and list views"
-                            class="grid grid-cols-7 gap-1.5"
-                        ></div>
-                        <p class="text-xs text-mute mt-2">
-                            Anything under 7 starts from today; 7 shows Sunday
-                            to Saturday.
-                        </p>
-                        <label class="mt-5 flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">
-                            <span>
-                                <span class="block text-sm font-medium">Keep screen awake</span>
-                                <span class="mt-1 block text-xs text-mute">Prevent the display from sleeping while Covey is visible. This may increase battery use.</span>
-                            </span>
-                            <input id="keep-screen-awake" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-                        </label>
-                        <p id="wake-lock-status" role="status" aria-live="polite" class="mt-2 min-h-4 text-xs text-mute"></p>
+                        <section aria-labelledby="view-time-heading">
+                            <h3 id="view-time-heading" class="settings-section-title">Time</h3>
+                            <div class="settings-group mt-3">
+                                <div class="settings-setting-row view-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Time format</span>
+                                        <span class="settings-setting-description">Choose how event times are displayed.</span>
+                                    </span>
+                                    <div id="timeformats" role="group" aria-label="Time format" class="settings-segmented flex"></div>
+                                </div>
+                                <div class="settings-setting-row view-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Week view hours</span>
+                                        <span class="settings-setting-description">Show the full day or focus on daytime hours.</span>
+                                    </span>
+                                    <div id="weekhours" role="group" aria-label="Week view hours" class="settings-segmented flex"></div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="mt-7" aria-labelledby="view-range-heading">
+                            <h3 id="view-range-heading" class="settings-section-title">Date range</h3>
+                            <div class="settings-group mt-3">
+                                <div class="settings-setting-row view-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Days shown</span>
+                                        <span class="settings-setting-description">Set the number of days in week and list views.</span>
+                                    </span>
+                                    <div id="daybtns" role="group" aria-label="Days shown in week and list views" class="settings-stepper view-day-options"></div>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                     <div id="tab-today">
-                        <label class="flex items-start justify-between gap-4 rounded-xl border border-line bg-bg p-3">
-                            <span>
-                                <span class="block text-sm font-medium">Automatic Today view</span>
-                                <span class="mt-1 block text-xs text-mute">A full-screen daily briefing appears once each window: 6:00–9:00 AM and 4:00–6:00 PM.</span>
-                            </span>
-                            <input id="today-enabled" type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-                        </label>
-                        <p class="mt-3 text-xs text-mute">Dismiss a briefing to hide it for the rest of that window.</p>
-                        <section class="mt-6 border-t border-line pt-5">
-                            <label class="flex items-start justify-between gap-4">
-                                <span>
-                                    <span class="block text-sm font-medium">Show local weather</span>
-                                    <span class="mt-1 block text-xs text-mute">On by default. The forecast appears after you set a location below.</span>
-                                </span>
-                                <input id="today-weather-enabled" type="checkbox" checked class="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]" />
-                            </label>
-                            <label for="today-temperature-unit" class="mt-4 block text-sm font-medium">Temperature unit</label>
-                            <select id="today-temperature-unit" class="mt-1 w-full max-w-xs rounded-lg border border-line bg-bg p-2 text-sm text-ink">
-                                <option value="F">Fahrenheit (°F)</option>
-                                <option value="C">Celsius (°C)</option>
-                            </select>
-                            <label for="today-weather-location" class="mt-4 block text-sm font-medium">Weather location</label>
-                            <input id="today-weather-location" type="text" maxlength="100" autocomplete="address-level2" placeholder="City or postal code" class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink" />
-                            <p class="mt-2 text-xs text-mute">Your location is saved in this browser and sent to Open-Meteo to find the forecast. Covey does not save your coordinates.</p>
-                            <button id="today-weather-location-save" type="button" class="mt-3 rounded-full border border-line px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed">Save location</button>
-                            <p id="today-weather-location-status" role="status" aria-live="polite" class="mt-2 min-h-4 text-xs text-mute"></p>
+                        <section aria-labelledby="ambient-display-heading">
+                            <h3 id="ambient-display-heading" class="settings-section-title">Display</h3>
+                            <div class="settings-group mt-3">
+                                <div class="settings-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span id="ambient-mode-label" class="settings-setting-label">Ambient mode</span>
+                                        <span class="settings-setting-description">Show a glanceable family briefing when Covey is idle.</span>
+                                    </span>
+                                    <span class="settings-actions">
+                                        <button id="today-preview" type="button" class="settings-button settings-button-secondary">Preview</button>
+                                        <input id="today-enabled" type="checkbox" role="switch" aria-labelledby="ambient-mode-label" class="settings-toggle-input" />
+                                    </span>
+                                </div>
+                                <label class="settings-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Keep screen awake</span>
+                                        <span class="settings-setting-description">Prevent the display from sleeping while Covey is visible. This may increase battery use.</span>
+                                    </span>
+                                    <input id="keep-screen-awake" type="checkbox" role="switch" class="settings-toggle-input" />
+                                </label>
+                                <p id="wake-lock-status" role="alert" class="settings-group-message text-xs text-mute empty:hidden"></p>
+                            </div>
                         </section>
-                        <button id="today-preview" type="button" class="mt-4 w-full rounded-lg border border-line py-2 text-sm font-semibold">Preview Today view</button>
+                        <section class="mt-7" aria-labelledby="ambient-weather-heading">
+                            <h3 id="ambient-weather-heading" class="settings-section-title">Weather</h3>
+                            <div class="settings-group mt-3">
+                                <label class="settings-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Show local weather</span>
+                                        <span class="settings-setting-description">Include the current conditions in the family briefing.</span>
+                                    </span>
+                                    <input id="today-weather-enabled" type="checkbox" role="switch" checked class="settings-toggle-input" />
+                                </label>
+                                <div id="today-weather-fields" class="settings-group-fields">
+                                    <div class="grid items-end gap-3 sm:grid-cols-[1fr_2fr_auto]">
+                                        <label for="today-temperature-unit" class="block text-sm font-medium">Temperature unit<select id="today-temperature-unit" class="settings-select mt-1 w-full"><option value="F">Fahrenheit (°F)</option><option value="C">Celsius (°C)</option></select></label>
+                                        <label for="today-weather-location" class="block text-sm font-medium">Weather location<input id="today-weather-location" type="text" maxlength="100" autocomplete="address-level2" placeholder="City or postal code" class="settings-field mt-1 w-full" /></label>
+                                        <button id="today-weather-location-save" type="button" class="settings-button settings-button-secondary disabled:cursor-not-allowed">Save location</button>
+                                    </div>
+                                    <p class="mt-2 text-xs text-mute">Your location stays in this browser. Open-Meteo receives it only to find the forecast.</p>
+                                    <p id="today-weather-location-status" role="status" aria-live="polite" class="mt-2 text-xs text-mute empty:hidden"></p>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                     <div id="tab-appearance">
-                        <p class="text-sm font-medium mb-2">Text size</p>
-                        <div
-                            id="textsizes"
-                            class="flex rounded-full border border-line bg-bg p-0.5"
-                        ></div>
-                        <p class="text-xs text-mute mt-2 mb-5">
-                            Makes text and buttons larger or smaller everywhere.
-                        </p>
-                        <p class="text-sm font-medium mb-2">Color theme</p>
-                        <div id="themes" class="grid grid-cols-3 gap-2"></div>
-                        <p class="text-sm font-medium mt-5 mb-2">Dark mode</p>
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-sm"
-                                >Switch automatically by time of day</span
-                            >
-                            <button
-                                id="autosw"
-                                role="switch"
-                                aria-checked="false"
-                                aria-label="Auto dark mode"
-                                class="relative shrink-0 w-12 h-7 rounded-full border border-line"
-                            >
-                                <span
-                                    id="autoknob"
-                                    class="absolute top-[3px] left-[3px] w-5 h-5 rounded-full transition-transform"
-                                ></span>
-                            </button>
-                        </div>
-                        <div id="autotimes" class="grid grid-cols-2 gap-2 mt-3">
-                            <label class="text-xs text-mute"
-                                >Dark from<input
-                                    id="dfrom"
-                                    type="time"
-                                    class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink text-sm"
-                            /></label>
-                            <label class="text-xs text-mute"
-                                >Light from<input
-                                    id="dto"
-                                    type="time"
-                                    class="mt-1 w-full bg-bg border border-line rounded-lg p-2 text-ink text-sm"
-                            /></label>
-                        </div>
-                        <p class="text-xs text-mute mt-2">
-                            The sun/moon button in the top bar overrides auto
-                            mode until the next scheduled switch.
-                        </p>
+                        <section aria-labelledby="appearance-text-heading">
+                            <h3 id="appearance-text-heading" class="settings-section-title">Text</h3>
+                            <div class="settings-group mt-3">
+                                <div class="settings-setting-row appearance-text-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Text size</span>
+                                        <span class="settings-setting-description">Choose a comfortable size for the calendar display.</span>
+                                    </span>
+                                    <div id="textsizes" class="settings-segmented flex" role="group" aria-label="Text size"></div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="mt-7" aria-labelledby="appearance-color-heading">
+                            <h3 id="appearance-color-heading" class="settings-section-title">Color</h3>
+                            <div class="settings-group mt-3">
+                                <div class="appearance-theme-copy settings-setting-copy">
+                                    <span class="settings-setting-label">Theme</span>
+                                    <span class="settings-setting-description">Select a palette for Covey.</span>
+                                </div>
+                                <div id="themes" class="appearance-theme-grid grid grid-cols-6 gap-2"></div>
+                            </div>
+                        </section>
+                        <section class="mt-7" aria-labelledby="appearance-dark-heading">
+                            <h3 id="appearance-dark-heading" class="settings-section-title">Dark mode</h3>
+                            <div class="settings-group mt-3">
+                                <label class="settings-setting-row">
+                                    <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Switch automatically</span>
+                                        <span class="settings-setting-description">Use dark mode during the hours you choose.</span>
+                                    </span>
+                                    <input id="autosw" type="checkbox" role="switch" class="settings-toggle-input" />
+                                </label>
+                                <div id="autotimes" class="settings-group-fields grid grid-cols-2 gap-3">
+                                    <label class="settings-setting-label">Dark from<input id="dfrom" type="time" class="settings-field mt-1 w-full" /></label>
+                                    <label class="settings-setting-label">Light from<input id="dto" type="time" class="settings-field mt-1 w-full" /></label>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                     <div
                         id="tab-about"
@@ -695,7 +701,7 @@
                                 d="M176 176 C216 116 256 116 296 156 C336 116 376 116 416 176"
                             />
                         </svg>
-                        <h3 class="text-lg font-bold">Covey</h3>
+                        <h3 class="text-lg font-medium">Covey</h3>
                         <p class="text-sm text-mute max-w-xs">
                             Covey is free, open-source software. Anyone can read
                             the code, change it, or run their own copy — no
@@ -705,7 +711,7 @@
                             href="https://github.com/vinceangeloni/Covey"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="mt-1 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-bg"
+                            class="settings-button settings-button-secondary mt-1 inline-flex items-center gap-2"
                             ><i data-i="github" data-s="18"></i>View source on
                             GitHub</a
                         >
@@ -714,11 +720,12 @@
                             build step required.
                         </p>
                     </div>
-                </div>
+                    </div>
+                </section>
             </div>
         </div>
 
 
-        <script src="app.js"></script>
+        <script type="module" src="app.js"></script>
     </body>
 </html>
