@@ -88,3 +88,15 @@ test("restores settled calendar chrome for touch gestures without blocking scrol
         /body\.chrome-idle-settled\s+\.idle-fade,[\s\S]*?pointer-events:\s*none/,
     );
 });
+
+test("keeps theme controls in settings and exposes settings from Glance", () => {
+    const app = read("app.js");
+    const calendar = read("components/calendar-shell.js");
+    const settings = read("components/settings-dialog.js");
+
+    assert.doesNotMatch(calendar, /id=["']theme["']/);
+    assert.match(settings, /id=["']darkmode["']/);
+    assert.match(settings, /id=["']autosw["']/);
+    assert.match(app, /el\("button", "ambient-settings", "Settings"\)/);
+    assert.match(app, /setTab = "appearance";[\s\S]*?setOpen = true;/);
+});

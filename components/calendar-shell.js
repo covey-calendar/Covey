@@ -91,11 +91,6 @@ export function mountCalendarShell(root) {
                             <i data-i="settings"></i>
                         </button>
                         <button
-                            id="theme"
-                            class="calendar-icon-button grid place-items-center"
-                            aria-label="Toggle light and dark mode"
-                        ></button>
-                        <button
                             id="fs"
                             class="calendar-icon-button grid place-items-center"
                             aria-label="Toggle full screen"

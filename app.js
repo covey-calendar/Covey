@@ -750,17 +750,14 @@
                 if (ovr && sc !== ovr.base) ovr = null;
                 return ovr ? ovr.mode : auto ? sc : manual || sysMode();
             }
-            const icon = () => {
-                $("theme").innerHTML = ic(eff() === "dark" ? "sun" : "moon");
-            };
             function paint() {
                 GT.apply(pal, eff());
                 document.body.dataset.ambientTheme = pal;
                 document.body.dataset.ambientMode = eff();
-                icon();
+                if ($("darkmode")) $("darkmode").checked = eff() === "dark";
             }
-            $("theme").onclick = () => {
-                const nx = eff() === "dark" ? "light" : "dark";
+            function setDarkMode(enabled) {
+                const nx = enabled ? "dark" : "light";
                 if (auto) ovr = { mode: nx, base: GT.sched(dFrom, dTo) };
                 else {
                     manual = nx;
@@ -770,7 +767,7 @@
                 }
                 paint();
                 if (setOpen) render();
-            };
+            }
             matchMedia("(prefers-color-scheme: dark)").addEventListener(
                 "change",
                 () => {
@@ -1450,7 +1447,18 @@
                 openCalendar.setAttribute("aria-label", "Open calendar and leave Glance mode");
                 openCalendar.insertAdjacentHTML("afterbegin", ic("calendar-days", 17));
                 openCalendar.onclick = () => closeTodayOverlay(true);
-                footer.append(sync, openCalendar);
+                const footerActions = el("div", "ambient-footer-actions");
+                const openSettings = el("button", "ambient-settings", "Settings");
+                openSettings.type = "button";
+                openSettings.insertAdjacentHTML("afterbegin", ic("settings", 17));
+                openSettings.onclick = () => {
+                    closeTodayOverlay(false);
+                    setTab = "appearance";
+                    setOpen = true;
+                    render();
+                };
+                footerActions.append(openSettings, openCalendar);
+                footer.append(sync, footerActions);
                 content.append(header, glanceMain, footer);
 
                 const weatherView = el("section", "ambient-forecast-view ambient-pane");
@@ -3047,6 +3055,7 @@
                     tb.append(b);
                 });
                 $("autosw").checked = auto;
+                $("darkmode").checked = eff() === "dark";
                 $("autotimes").style.opacity = auto ? "1" : ".5";
                 $("dfrom").disabled = $("dto").disabled = !auto;
                 if (document.activeElement !== $("dfrom"))
@@ -3420,6 +3429,9 @@
                 saveSet();
                 paint();
                 render();
+            };
+            $("darkmode").onchange = (event) => {
+                setDarkMode(event.target.checked);
             };
             $("dfrom").oninput = (e) => {
                 if (e.target.value) {

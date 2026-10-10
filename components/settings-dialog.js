@@ -271,6 +271,13 @@ export function mountSettingsDialog(root) {
                             <div class="settings-group mt-3">
                                 <label class="settings-setting-row">
                                     <span class="settings-setting-copy">
+                                        <span class="settings-setting-label">Dark mode</span>
+                                        <span class="settings-setting-description">Use Covey's darker color palette.</span>
+                                    </span>
+                                    <input id="darkmode" type="checkbox" role="switch" class="settings-toggle-input" />
+                                </label>
+                                <label class="settings-setting-row">
+                                    <span class="settings-setting-copy">
                                         <span class="settings-setting-label">Switch automatically</span>
                                         <span class="settings-setting-description">Use dark mode during the hours you choose.</span>
                                     </span>
