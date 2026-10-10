@@ -8,6 +8,13 @@
                 minutesUntil,
                 selectAmbientFocus,
             } from "./ambient.js";
+            import { mountCalendarShell } from "./components/calendar-shell.js";
+            import { mountEventDialogs } from "./components/event-dialogs.js";
+            import { mountSettingsDialog } from "./components/settings-dialog.js";
+
+            mountCalendarShell(document.getElementById("app-root"));
+            mountEventDialogs(document.getElementById("dialogs-root"));
+            mountSettingsDialog(document.getElementById("settings-root"));
 
             /*
              * Covey browser application.
