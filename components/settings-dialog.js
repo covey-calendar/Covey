@@ -1,3 +1,5 @@
+import { brandLogoMarkup } from "./brand-logo.js";
+
 export function mountSettingsDialog(root) {
     if (!root) throw new Error("Settings root is missing.");
     root.innerHTML = `
@@ -285,30 +287,7 @@ export function mountSettingsDialog(root) {
                         id="tab-about"
                         class="flex flex-col items-center text-center gap-3 py-2"
                     >
-                        <svg
-                            width="56"
-                            height="56"
-                            viewBox="0 0 512 512"
-                            fill="none"
-                            stroke="var(--accent)"
-                            stroke-width="26"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                        >
-                            <path
-                                d="M96 336 C136 276 176 276 216 316 C256 276 296 276 336 336"
-                                opacity="0.55"
-                            />
-                            <path
-                                d="M136 256 C176 196 216 196 256 236 C296 196 336 196 376 256"
-                                opacity="0.8"
-                            />
-                            <path
-                                d="M176 176 C216 116 256 116 296 156 C336 116 376 116 416 176"
-                            />
-                        </svg>
-                        <h3 class="text-lg font-medium">Covey</h3>
+                        ${brandLogoMarkup("settings-about-logo")}
                         <p class="text-sm text-mute max-w-xs">
                             Covey is free, open-source software. Anyone can read
                             the code, change it, or run their own copy — no
