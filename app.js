@@ -781,10 +781,6 @@
             function tick() {
                 paint();
                 const n = new Date();
-                $("clock").textContent = formatTime(n, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                });
                 updateSyncBadge();
                 checkTodayView(n);
                 refreshTodayWeatherIfDue(n);
@@ -1718,13 +1714,31 @@
             // Secondary navigation fades while the calendar is idle, but any
             // pointer, touch, keyboard, or wheel activity brings it back.
             const CHROME_IDLE_MS = 6000; // hide nav chrome after this long without interaction
-            let chromeIdleTimer = null;
+            const CHROME_COLLAPSE_MS = 320;
+            let chromeIdleTimer = null,
+                chromeSettleTimer = null;
+            function hideChrome() {
+                document.body.classList.add("chrome-idle");
+                clearTimeout(chromeSettleTimer);
+                if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    document.body.classList.add("chrome-idle-settled");
+                    return;
+                }
+                chromeSettleTimer = setTimeout(() => {
+                    if (document.body.classList.contains("chrome-idle"))
+                        document.body.classList.add("chrome-idle-settled");
+                }, CHROME_COLLAPSE_MS);
+            }
             function wakeChrome() {
-                document.body.classList.remove("chrome-idle");
+                document.body.classList.remove("chrome-idle", "chrome-idle-settled");
                 clearTimeout(chromeIdleTimer);
+                clearTimeout(chromeSettleTimer);
                 chromeIdleTimer = setTimeout(() => {
-                    if (!sheet && !detailEvent && !setOpen)
-                        document.body.classList.add("chrome-idle");
+                    if ($("topbar")?.matches(":focus-within")) {
+                        wakeChrome();
+                        return;
+                    }
+                    if (!sheet && !detailEvent && !setOpen) hideChrome();
                 }, CHROME_IDLE_MS);
             }
             function noteUserActivity(event) {
@@ -3539,12 +3553,23 @@
                 armIdleReset();
             });
             $("listview").addEventListener("scroll", armIdleReset);
-            ["pointerdown", "pointermove", "touchstart", "keydown", "wheel"].forEach(
+            // touchmove is kept alongside Pointer Events as an explicit
+            // Safari/iPad fallback. Passive listeners preserve native swiping
+            // and scrolling while the shared wake path remains idempotent.
+            [
+                "pointerdown",
+                "pointermove",
+                "touchstart",
+                "touchmove",
+                "keydown",
+                "wheel",
+            ].forEach(
                 (evt) =>
                     document.addEventListener(evt, noteUserActivity, {
                         passive: true,
                     }),
             );
+            $("topbar").addEventListener("focusin", wakeChrome);
             wakeChrome();
             setInterval(load, 60000);
             setInterval(tick, 10000);

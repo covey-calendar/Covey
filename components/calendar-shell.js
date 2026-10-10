@@ -5,36 +5,39 @@ export function mountCalendarShell(root) {
             <section class="flex-1 min-w-0 min-h-0 flex flex-col">
                 <header
                     id="topbar"
-                    class="flex items-center gap-2 mb-2 flex-wrap landscape:grid landscape:grid-cols-[1fr_auto_1fr]"
+                    class="calendar-toolbar"
+                    aria-label="Calendar controls"
                 >
-                    <div class="flex items-center gap-2 min-w-0 idle-fade">
+                    <div class="calendar-nav-cluster idle-fade">
                         <button
                             id="prev"
-                            class="w-10 h-10 grid place-items-center rounded-full border border-line bg-card"
+                            class="calendar-icon-button grid place-items-center"
                             aria-label="Previous"
                         >
                             <i data-i="chevron-left"></i>
                         </button>
                         <button
                             id="next"
-                            class="w-10 h-10 grid place-items-center rounded-full border border-line bg-card"
+                            class="calendar-icon-button grid place-items-center"
                             aria-label="Next"
                         >
                             <i data-i="chevron-right"></i>
                         </button>
                         <h1
                             id="mon"
-                            class="text-lg lg:text-xl font-medium mx-1"
+                            class="calendar-date-range"
                         ></h1>
                         <button
                             id="todaybtn"
-                            class="h-10 px-4 rounded-full border border-line bg-card text-sm font-medium"
+                            class="calendar-today-button"
                         >
                             Today
                         </button>
+                    </div>
+                    <div class="calendar-utility-cluster idle-fade">
                         <button
                             id="syncbtn"
-                            class="hidden items-center gap-1.5 h-8 rounded-full border border-line bg-card px-2.5 text-xs font-medium text-mute shrink-0"
+                            class="calendar-sync-button hidden items-center"
                             aria-live="polite"
                             title=""
                         >
@@ -44,25 +47,17 @@ export function mountCalendarShell(root) {
                             ></span>
                             <span id="syncsub">Syncing…</span>
                         </button>
-                    </div>
-                    <div
-                        id="clock"
-                        class="hidden landscape:block text-xl lg:text-2xl font-medium text-center"
-                    ></div>
-                    <div
-                        class="ml-auto flex items-center gap-2 justify-self-end idle-fade"
-                    >
                         <div
                             role="group"
                             aria-label="Calendar view"
-                            class="flex rounded-full border border-line bg-card p-0.5"
+                            class="calendar-view-switch"
                         >
                             <button
                                 id="vm"
                                 aria-label="Month view"
                                 title="Month view"
                                 aria-pressed="false"
-                                class="h-9 w-9 grid place-items-center rounded-full"
+                                class="grid place-items-center"
                             >
                                 <i data-i="calendar-days" data-s="18"></i>
                                 <span class="sr-only">Month</span>
@@ -72,7 +67,7 @@ export function mountCalendarShell(root) {
                                 aria-label="Week view"
                                 title="Week view"
                                 aria-pressed="false"
-                                class="h-9 w-9 grid place-items-center rounded-full"
+                                class="grid place-items-center"
                             >
                                 <i data-i="columns-3" data-s="18"></i>
                                 <span class="sr-only">Week</span>
@@ -82,7 +77,7 @@ export function mountCalendarShell(root) {
                                 aria-label="List view"
                                 title="List view"
                                 aria-pressed="false"
-                                class="h-9 w-9 grid place-items-center rounded-full"
+                                class="grid place-items-center"
                             >
                                 <i data-i="list" data-s="18"></i>
                                 <span class="sr-only">List</span>
@@ -90,19 +85,19 @@ export function mountCalendarShell(root) {
                         </div>
                         <button
                             id="setbtn"
-                            class="w-10 h-10 grid place-items-center rounded-full border border-line bg-card"
+                            class="calendar-icon-button grid place-items-center"
                             aria-label="Settings"
                         >
                             <i data-i="settings"></i>
                         </button>
                         <button
                             id="theme"
-                            class="w-10 h-10 grid place-items-center rounded-full border border-line bg-card"
+                            class="calendar-icon-button grid place-items-center"
                             aria-label="Toggle light and dark mode"
                         ></button>
                         <button
                             id="fs"
-                            class="w-10 h-10 grid place-items-center rounded-full border border-line bg-card"
+                            class="calendar-icon-button grid place-items-center"
                             aria-label="Toggle full screen"
                         >
                             <i data-i="maximize-2" data-s="18"></i>
